@@ -11,6 +11,8 @@ const EXPORT_COLUMNS = [
   ["order_expiry", "Order expiry date"], ["reissue_days", "Days to cert expiry"], ["days_left", "Days remaining in order"],
   ["replacement", "Replacement certificate"], ["handover", "Handover type"], ["status", "Case status"],
   ["sent_on", "Sent to SSL Indonesia on"], ["completed_on", "Completed on"], ["si_order", "SSL Indonesia order #"],
+  ["admin_name", "Admin name"], ["admin_email", "Admin email"], ["admin_phone", "Admin phone"],
+  ["admin_org", "Admin organization"], ["ggs_id", "API order ID"],
   ["notes", "Notes"], ["pusat_cost", "Pusat-SSL cost"], ["si_cost", "SSL-Indonesia cost"]
 ];
 const DEFAULT_EXPORT_KEYS = EXPORT_COLUMNS.map(c => c[0]).filter(k => k !== "pusat_cost" && k !== "si_cost");
@@ -363,6 +365,11 @@ function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus 
                 r.replacement_order_number ? ["SSL Indonesia order #", r.replacement_order_number] : null,
                 r.sent_to_partner_at ? ["Sent to SSL Indonesia", fmtDate(r.sent_to_partner_at.slice(0,10))] : null,
                 r.completed_at ? ["Completed on", fmtDate(r.completed_at.slice(0,10))] : null,
+                r.gogetssl_order_id ? ["API order ID", r.gogetssl_order_id] : null,
+                r.admin_name ? ["Admin contact", r.admin_name] : null,
+                r.admin_email ? ["Admin email", r.admin_email] : null,
+                r.admin_phone ? ["Admin phone", r.admin_phone] : null,
+                r.admin_organization ? ["Admin organization", r.admin_organization] : null,
                 r.pusat_cost != null ? ["Pusat-SSL cost", "$" + r.pusat_cost] : null,
                 r.ssl_indonesia_cost != null ? ["SSL-Indonesia cost", "$" + r.ssl_indonesia_cost] : null,
               ].filter(Boolean).map(([k, v]) => (
