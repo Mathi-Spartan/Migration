@@ -702,8 +702,6 @@ export default function Dashboard() {
       {compose && (() => {
         const enc = encodeURIComponent;
         const gmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${enc(compose.to)}&su=${enc(compose.subject)}&body=${enc(compose.body)}`;
-        const owa = `https://outlook.live.com/mail/0/deeplink/compose?to=${enc(compose.to)}&subject=${enc(compose.subject)}&body=${enc(compose.body)}`;
-        const mailto = `mailto:${compose.to}?subject=${enc(compose.subject)}&body=${enc(compose.body)}`;
         const btn = { padding: "10px 16px", fontSize: 13.5, fontWeight: 600, borderRadius: 7, border: "1px solid var(--line-strong)", background: "#fff", color: "var(--cyan-deep)", textAlign: "center", textDecoration: "none", display: "block" };
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", zIndex: 58, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
@@ -716,9 +714,7 @@ export default function Dashboard() {
                 Order sheet is downloading (handover-{compose.order}.xlsx) — attach it to the draft. Pick where to compose:
               </p>
               <div style={{ display: "grid", gap: 8 }}>
-                <a href={owa} target="_blank" rel="noreferrer" style={{ ...btn, background: "var(--cyan)", color: "#fff", borderColor: "transparent" }}>Open in Outlook Web</a>
-                <a href={gmail} target="_blank" rel="noreferrer" style={btn}>Open in Gmail</a>
-                <a href={mailto} style={btn}>Open in desktop mail app</a>
+                <a href={gmail} target="_blank" rel="noreferrer" style={{ ...btn, background: "var(--cyan)", color: "#fff", borderColor: "transparent" }}>Open in Gmail</a>
                 <button onClick={() => { navigator.clipboard.writeText(`To: ${compose.to}\nSubject: ${compose.subject}\n\n${compose.body.replace(/\r\n/g, "\n")}`).then(() => setCopied(true)); }} style={{ ...btn, cursor: "pointer" }}>
                   {copied ? "Copied ✓" : "Copy email text"}
                 </button>
