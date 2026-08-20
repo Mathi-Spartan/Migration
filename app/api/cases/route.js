@@ -39,6 +39,7 @@ export async function POST(req) {
   }
 
   const { diffDays, years } = calcReplacement(body.cert_end_date, body.order_expiry_date);
+  const handover = diffDays <= 25 ? "Renewal" : body.handover_type;
 
   const { data, error } = await sb.from("migration_cases").insert({
     order_number: body.order_number.trim(),
@@ -53,7 +54,7 @@ export async function POST(req) {
     order_expiry_date: body.order_expiry_date,
     days_remaining: diffDays,
     replacement_years: years,
-    handover_type: body.handover_type,
+    handover_type: handover,
     pusat_cost: body.pusat_cost === "" || body.pusat_cost == null ? null : Number(body.pusat_cost),
     ssl_indonesia_cost: body.ssl_indonesia_cost === "" || body.ssl_indonesia_cost == null ? null : Number(body.ssl_indonesia_cost),
     notes: body.notes || null,
