@@ -394,7 +394,7 @@ export default function Dashboard() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
-  const [flt, setFlt] = useState({ search: "", from: "", to: "", product: "", handover: "", years: "", status: "" });
+  const [flt, setFlt] = useState({ search: "", from: "", to: "", product: "", handover: "Reissue", years: "", status: "" });
   const [exportCols, setExportCols] = useState(new Set(DEFAULT_EXPORT_KEYS));
   const [showColPicker, setShowColPicker] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -604,7 +604,7 @@ export default function Dashboard() {
       </section>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-        {[["", "All orders"], ["Reissue", "Reissue orders"], ["Renewal", "Renewal orders"]].map(([v, l]) => {
+        {[["Reissue", "Reissue orders"], ["Renewal", "Renewal orders"]].map(([v, l]) => {
           const count = v === "" ? baseFiltered.length : baseFiltered.filter(r => r.handover_type === v).length;
           const active = flt.handover === v;
           return (
