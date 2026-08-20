@@ -702,6 +702,7 @@ export default function Dashboard() {
       {compose && (() => {
         const enc = encodeURIComponent;
         const gmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${enc(compose.to)}&su=${enc(compose.subject)}&body=${enc(compose.body)}`;
+        const wa = `https://wa.me/?text=${enc("*" + compose.subject + "*\n\n" + compose.body.replace(/\r\n/g, "\n"))}`;
         const btn = { padding: "10px 16px", fontSize: 13.5, fontWeight: 600, borderRadius: 7, border: "1px solid var(--line-strong)", background: "#fff", color: "var(--cyan-deep)", textAlign: "center", textDecoration: "none", display: "block" };
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", zIndex: 58, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
@@ -711,10 +712,11 @@ export default function Dashboard() {
                 <button onClick={() => setCompose(null)} aria-label="Close" style={{ background: "transparent", color: "var(--txt-mid)", fontSize: 20, padding: "2px 8px" }}>×</button>
               </div>
               <p style={{ fontSize: 13, color: "var(--txt-mid)", marginBottom: 14 }}>
-                Order sheet is downloading (handover-{compose.order}.xlsx) — attach it to the draft. Pick where to compose:
+                Order sheet is downloading (handover-{compose.order}.xlsx). For WhatsApp: pick your group, the message is pre-typed; attach the sheet from downloads if needed.
               </p>
               <div style={{ display: "grid", gap: 8 }}>
                 <a href={gmail} target="_blank" rel="noreferrer" style={{ ...btn, background: "var(--cyan)", color: "#fff", borderColor: "transparent" }}>Open in Gmail</a>
+                <a href={wa} target="_blank" rel="noreferrer" style={{ ...btn, background: "#1faa55", color: "#fff", borderColor: "transparent" }}>Share to WhatsApp</a>
                 <button onClick={() => { navigator.clipboard.writeText(`To: ${compose.to}\nSubject: ${compose.subject}\n\n${compose.body.replace(/\r\n/g, "\n")}`).then(() => setCopied(true)); }} style={{ ...btn, cursor: "pointer" }}>
                   {copied ? "Copied ✓" : "Copy email text"}
                 </button>
