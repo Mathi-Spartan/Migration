@@ -28,7 +28,7 @@ export async function GET() {
     const auth = await authRes.json();
     if (!auth.key) throw new Error(auth.description || "GoGetSSL auth failed");
 
-    const prodRes = await fetch(`https://my.gogetssl.com/api/products/all/?auth_key=${encodeURIComponent(auth.key)}`, { cache: "no-store" });
+    const prodRes = await fetch(`https://my.gogetssl.com/api/products/?auth_key=${encodeURIComponent(auth.key)}`, { cache: "no-store" });
     const prod = await prodRes.json();
     const list = (prod.products || [])
       .map(p => (p.product || p.name || "").trim())
