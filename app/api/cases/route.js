@@ -39,7 +39,7 @@ export async function POST(req) {
   }
 
   const { diffDays, years } = calcReplacement(body.cert_end_date, body.order_expiry_date);
-  const handover = diffDays <= 25 ? "Renewal" : body.handover_type;
+  const handover = diffDays <= 30 ? "Renewal" : body.handover_type;
 
   const { data, error } = await sb.from("migration_cases").insert({
     order_number: body.order_number.trim(),

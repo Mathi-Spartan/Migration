@@ -164,7 +164,7 @@ function CaseForm({ initial, onClose, onSaved, products }) {
     if (!f.cert_end_date || !f.order_expiry_date) return null;
     const diff = Math.floor((new Date(f.order_expiry_date) - new Date(f.cert_end_date)) / 86400000);
     const years = diff > 730 ? 3 : diff > 365 ? 2 : 1;
-    return { diff, years, renewalOnly: diff <= 25 };
+    return { diff, years, renewalOnly: diff <= 30 };
   }, [f.cert_end_date, f.order_expiry_date]);
 
   useEffect(() => {
@@ -227,7 +227,7 @@ function CaseForm({ initial, onClose, onSaved, products }) {
           <div style={{ marginTop: 16, padding: "13px 16px", borderRadius: 8, background: tierDim(preview.years), border: `1px solid ${tierColor(preview.years)}`, display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
             <span className="mono" style={{ fontSize: 22, fontWeight: 600, color: tierColor(preview.years) }}>{preview.diff}d</span>
             <span style={{ fontSize: 13.5 }}>
-              remaining in order → offer a <strong style={{ color: tierColor(preview.years) }}>{preview.years}-year replacement</strong> via SSL Indonesia{preview.renewalOnly && <span> · gap ≤ 25 days, qualifies as <strong>Renewal only</strong></span>}
+              remaining in order → offer a <strong style={{ color: tierColor(preview.years) }}>{preview.years}-year replacement</strong> via SSL Indonesia{preview.renewalOnly && <span> · gap ≤ 30 days, qualifies as <strong>Renewal only</strong></span>}
             </span>
           </div>
         )}

@@ -20,7 +20,7 @@ export async function PATCH(req, { params }) {
     const { diffDays, years } = calcReplacement(patch.cert_end_date, patch.order_expiry_date);
     patch.days_remaining = diffDays;
     patch.replacement_years = years;
-    if (diffDays <= 25) patch.handover_type = "Renewal";
+    if (diffDays <= 30) patch.handover_type = "Renewal";
   }
 
   const { data, error } = await sb.from("migration_cases").update(patch).eq("id", params.id).select().single();
