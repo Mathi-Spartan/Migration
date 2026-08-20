@@ -381,6 +381,19 @@ export default function Dashboard() {
     else { setFlt(f => ({ ...f, from: "", to: "" })); }
   };
 
+  const baseFiltered = useMemo(() => records.filter(r => {
+    if (flt.product && r.product_type !== flt.product) return false;
+    if (flt.years && String(r.replacement_years) !== flt.years) return false;
+    if (flt.status && r.status !== flt.status) return false;
+    if (flt.from && r.purchase_date < flt.from) return false;
+    if (flt.to && r.purchase_date > flt.to) return false;
+    if (flt.search) {
+      const q = flt.search.toLowerCase();
+      if (!r.order_number.toLowerCase().includes(q) && !r.domain_name.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  }), [records, flt.product, flt.years, flt.status, flt.from, flt.to, flt.search]);
+
   const filtered = useMemo(() => records.filter(r => {
     if (flt.product && r.product_type !== flt.product) return false;
     if (flt.handover && r.handover_type !== flt.handover) return false;
@@ -478,10 +491,6 @@ export default function Dashboard() {
             <option value="">All products</option>
             {products.map(p => <option key={p}>{p}</option>)}
           </select>
-          <select value={flt.handover} onChange={e => setFlt(f => ({ ...f, handover: e.target.value }))}>
-            <option value="">Reissue + Renewal</option>
-            <option>Reissue</option><option>Renewal</option>
-          </select>
           <select value={flt.status} onChange={e => setFlt(f => ({ ...f, status: e.target.value }))}>
             <option value="">Any status</option>
             {CASE_STATUS.map(st => <option key={st} value={st}>{st}</option>)}
@@ -500,6 +509,25 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+        {[["", "All orders"], ["Reissue", "Reissue orders"], ["Renewal", "Renewal orders"]].map(([v, l]) => {
+          const count = v === "" ? baseFiltered.length : baseFiltered.filter(r => r.handover_type === v).length;
+          const active = flt.handover === v;
+          return (
+            <button key={v} onClick={() => setFlt(f => ({ ...f, handover: v }))} style={{
+              padding: "9px 18px", fontSize: 13.5, fontWeight: active ? 600 : 400,
+              background: active ? "#fff" : "transparent",
+              border: active ? "1px solid var(--line-strong)" : "1px solid transparent",
+              borderBottom: active ? "1px solid #fff" : "1px solid transparent",
+              borderRadius: "8px 8px 0 0", color: active ? "var(--cyan-deep)" : "var(--txt-mid)",
+              marginBottom: -1, position: "relative", zIndex: 1
+            }}>
+              {l} <span style={{ fontSize: 12, fontWeight: 600, background: active ? "var(--cyan-dim)" : "var(--ink-3)", color: active ? "var(--cyan-deep)" : "var(--txt-mid)", padding: "1px 8px", borderRadius: 100, marginLeft: 4 }}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
 
       {loadErr && (
         <div style={{ padding: "14px 18px", background: "var(--red-dim)", border: "1px solid var(--red)", borderRadius: 8, color: "var(--red)", fontSize: 13.5, marginBottom: 16 }}>
