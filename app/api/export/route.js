@@ -30,6 +30,7 @@ export const COLUMNS = [
   ["admin_phone", "Admin Phone", r => r.admin_phone || ""],
   ["admin_org", "Admin Organization", r => r.admin_organization || ""],
   ["ggs_id", "API Order ID", r => r.gogetssl_order_id || ""],
+  ["handover_no", "Handover Ref", r => r.handover_no ? "#" + String(r.handover_no).padStart(3, "0") : ""],
   ["notes", "Notes", r => r.notes || ""],
   ["pusat_cost", "Pusat-SSL Cost", r => r.pusat_cost ?? ""],
   ["si_cost", "SSL-Indonesia Cost", r => r.ssl_indonesia_cost ?? ""]

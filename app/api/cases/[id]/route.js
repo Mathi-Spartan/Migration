@@ -6,6 +6,17 @@ export const dynamic = "force-dynamic";
 export async function PATCH(req, { params }) {
   const sb = getServiceClient();
   const body = await req.json();
+
+  if (body.assign_handover_no) {
+    const { data: row } = await sb.from("migration_cases").select("handover_no").eq("id", params.id).single();
+    if (row && row.handover_no) return NextResponse.json({ data: { handover_no: row.handover_no } });
+    const { data: top } = await sb.from("migration_cases").select("handover_no").not("handover_no", "is", null).order("handover_no", { ascending: false }).limit(1);
+    const next = ((top && top[0] && top[0].handover_no) || 0) + 1;
+    const { data, error } = await sb.from("migration_cases").update({ handover_no: next, updated_at: new Date().toISOString() }).eq("id", params.id).select("handover_no").single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ data });
+  }
+
   const patch = { ...body, updated_at: new Date().toISOString() };
   delete patch.id; delete patch.created_at;
 

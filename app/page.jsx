@@ -12,7 +12,7 @@ const EXPORT_COLUMNS = [
   ["replacement", "Replacement certificate"], ["handover", "Handover type"], ["status", "Case status"],
   ["sent_on", "Sent to SSL Indonesia on"], ["completed_on", "Completed on"], ["si_order", "SSL Indonesia order #"],
   ["admin_name", "Admin name"], ["admin_email", "Admin email"], ["admin_phone", "Admin phone"],
-  ["admin_org", "Admin organization"], ["ggs_id", "API order ID"],
+  ["admin_org", "Admin organization"], ["ggs_id", "API order ID"], ["handover_no", "Handover ref"],
   ["notes", "Notes"], ["pusat_cost", "Pusat-SSL cost"], ["si_cost", "SSL-Indonesia cost"]
 ];
 const DEFAULT_EXPORT_KEYS = EXPORT_COLUMNS.map(c => c[0]).filter(k => k !== "pusat_cost" && k !== "si_cost");
@@ -315,23 +315,7 @@ function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus,
 
   const sendHandover = (e) => {
     e.stopPropagation();
-    const action = r.handover_type === "Renewal" ? "renew" : "reissue";
-    const body = [
-      "Hi Team,",
-      "",
-      `We are moving this account from PusatSSL to SSL Indonesia. Please coordinate with the end customer to help them ${action} the certificate.`,
-      "",
-      `Order: ${r.order_number}`,
-      `Domain: ${r.domain_name}`,
-      `Product: ${r.product_type}`,
-      `Handover type: ${r.handover_type}`,
-      `Current cert expires: ${r.cert_end_date}`,
-      `Replacement to issue: ${r.replacement_years}-year`,
-      r.admin_name ? `Customer contact: ${r.admin_name}${r.admin_email ? " · " + r.admin_email : ""}${r.admin_phone ? " · " + r.admin_phone : ""}` : null,
-      "",
-      `Order sheet: handover-${r.order_number}.xlsx (downloaded — please attach before sending)`
-    ].filter(x => x !== null).join("\r\n");
-    onSend({ to: "mathimcafee@gmail.com", subject: "Account handover", body, order: r.order_number, id: r.id });
+    onSend(r);
   };
   const urgent = r.days_remaining < 90;
   return (
@@ -391,6 +375,7 @@ function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus,
                 r.replacement_order_number ? ["SSL Indonesia order #", r.replacement_order_number] : null,
                 r.sent_to_partner_at ? ["Sent to SSL Indonesia", fmtDate(r.sent_to_partner_at.slice(0,10))] : null,
                 r.completed_at ? ["Completed on", fmtDate(r.completed_at.slice(0,10))] : null,
+                r.handover_no ? ["Handover ref", "#" + String(r.handover_no).padStart(3, "0")] : null,
                 r.gogetssl_order_id ? ["API order ID", r.gogetssl_order_id] : null,
                 r.admin_name ? ["Admin contact", r.admin_name] : null,
                 r.admin_email ? ["Admin email", r.admin_email] : null,
@@ -510,17 +495,47 @@ export default function Dashboard() {
     y3: records.filter(r => r.replacement_years === 3).length,
   }), [records]);
 
-  const openCompose = (payload) => {
+  const openCompose = async (r) => {
+    let hno = r.handover_no;
+    if (!hno) {
+      try {
+        const res = await fetch(`/api/cases/${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assign_handover_no: true }) });
+        const j = await res.json();
+        if (res.ok && j.data?.handover_no) {
+          hno = j.data.handover_no;
+          setRecords(prev => prev.map(x => x.id === r.id ? { ...x, handover_no: hno } : x));
+        }
+      } catch {}
+    }
+    const ref = hno ? "#" + String(hno).padStart(3, "0") : "";
+    const action = r.handover_type === "Renewal" ? "renew" : "reissue";
+    const body = [
+      "Hi Team,",
+      "",
+      `We are moving this account from PusatSSL to SSL Indonesia. Please coordinate with the end customer to help them ${action} the certificate.`,
+      "",
+      hno ? `Handover ref: ${ref}` : null,
+      `Order: ${r.order_number}`,
+      `Domain: ${r.domain_name}`,
+      `Product: ${r.product_type}`,
+      `Handover type: ${r.handover_type}`,
+      `Current cert expires: ${r.cert_end_date}`,
+      `Replacement to issue: ${r.replacement_years}-year`,
+      r.admin_name ? `Customer contact: ${r.admin_name}${r.admin_email ? " · " + r.admin_email : ""}${r.admin_phone ? " · " + r.admin_phone : ""}` : null,
+      "",
+      `Order sheet: handover-${r.order_number}.xlsx (downloaded — please attach before sending)`
+    ].filter(x => x !== null).join("\r\n");
+    const payload = { to: "mathimcafee@gmail.com", subject: `Account handover ${ref}`.trim(), body, order: r.order_number, id: r.id };
     setCompose(payload); setCopied(false);
     fetch("/api/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: [payload.id] })
+      body: JSON.stringify({ ids: [r.id] })
     }).then(res => res.ok ? res.blob() : null).then(blob => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `handover-${payload.order}.xlsx`; a.click();
+      a.href = url; a.download = `handover-${r.order_number}.xlsx`; a.click();
       URL.revokeObjectURL(url);
     }).catch(() => {});
   };
@@ -708,7 +723,7 @@ export default function Dashboard() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", zIndex: 58, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
             <div style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 14, padding: "24px 28px", width: "100%", maxWidth: 520, boxShadow: "0 20px 60px rgba(13,17,22,0.25)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <div style={{ fontSize: 17, fontWeight: 600 }}>Send handover — {compose.order}</div>
+                <div style={{ fontSize: 17, fontWeight: 600 }}>{compose.subject} — {compose.order}</div>
                 <button onClick={() => setCompose(null)} aria-label="Close" style={{ background: "transparent", color: "var(--txt-mid)", fontSize: 20, padding: "2px 8px" }}>×</button>
               </div>
               <p style={{ fontSize: 13, color: "var(--txt-mid)", marginBottom: 14 }}>
