@@ -280,14 +280,16 @@ function CaseForm({ initial, onClose, onSaved, products }) {
 }
 
 /* ---------- Case table ---------- */
-const COLS = "26px minmax(124px,1.1fr) 86px minmax(114px,1fr) 78px 68px 76px 84px 74px 92px 136px 24px";
+const COLS_FULL = "26px minmax(124px,1.1fr) 86px minmax(114px,1fr) 78px 68px 76px 84px 74px 92px 136px 24px";
+const COLS_RENEWAL = "26px minmax(140px,1.2fr) 90px minmax(130px,1.05fr) 84px 74px 80px 90px 80px 140px 24px";
+const colsFor = (tab) => tab === "Renewal" ? COLS_RENEWAL : COLS_FULL;
 
 function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue, tab }) {
   const deadlineLabel = tab === "Reissue" ? "Reissue in" : tab === "Renewal" ? "Renew in" : "Expires in";
   const runwayLabel = tab === "Reissue" ? "Days to end the subscription" : "Order left";
   const h = { fontSize: 11, fontWeight: 600, color: "var(--txt-low)", textTransform: "uppercase", letterSpacing: "0.05em" };
   return (
-    <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 10, alignItems: "center", padding: "10px 14px", borderBottom: "1px solid var(--line)", background: "var(--ink-2)", borderRadius: "12px 12px 0 0" }}>
+    <div style={{ display: "grid", gridTemplateColumns: colsFor(tab), gap: 10, alignItems: "center", padding: "10px 14px", borderBottom: "1px solid var(--line)", background: "var(--ink-2)", borderRadius: "12px 12px 0 0" }}>
       <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Select all" style={{ width: 15, height: 15, cursor: "pointer", accentColor: "#3375b1" }} />
       <span style={h}>Domain</span>
       <span style={h}>Order #</span>
@@ -299,19 +301,19 @@ function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue, tab }) {
       <button onClick={onSortReissue} title="Sort by days to certificate expiry" style={{ ...h, textAlign: "right", background: "transparent", padding: 0, border: "none", cursor: "pointer", color: sortDir ? "var(--cyan-deep)" : "var(--txt-low)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, fontFamily: "inherit" }}>
         {deadlineLabel} {sortDir === "asc" ? "↑" : sortDir === "desc" ? "↓" : "↕"}
       </button>
-      <span style={{ ...h, textAlign: "right", lineHeight: 1.25 }}>{runwayLabel}</span>
+      {tab !== "Renewal" && <span style={{ ...h, textAlign: "right", lineHeight: 1.25 }}>{runwayLabel}</span>}
       <span style={h}>Case status</span>
       <span />
     </div>
   );
 }
 
-function CaseRow({ r, last, selected, onToggle, onEdit, onDelete, onStatus }) {
+function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus }) {
   const [open, setOpen] = useState(false);
   const urgent = r.days_remaining < 90;
   return (
     <div style={{ borderBottom: last && !open ? "none" : "1px solid var(--line)" }}>
-      <div onClick={() => setOpen(o => !o)} style={{ display: "grid", gridTemplateColumns: COLS, gap: 10, alignItems: "center", padding: "12px 14px", cursor: "pointer", background: open ? "var(--ink-2)" : "transparent" }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: "grid", gridTemplateColumns: colsFor(tab), gap: 10, alignItems: "center", padding: "12px 14px", cursor: "pointer", background: open ? "var(--ink-2)" : "transparent" }}>
         <input type="checkbox" checked={selected} onClick={e => e.stopPropagation()} onChange={() => onToggle(r.id)} aria-label={"Select " + r.order_number} style={{ width: 15, height: 15, cursor: "pointer", accentColor: "#3375b1" }} />
         <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: tierColor(r.replacement_years), flexShrink: 0 }} />
@@ -326,9 +328,11 @@ function CaseRow({ r, last, selected, onToggle, onEdit, onDelete, onStatus }) {
         <div style={{ textAlign: "right" }}>
           <span className={daysUntil(r.cert_end_date) <= 30 ? "pulse" : ""} style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: daysUntil(r.cert_end_date) <= 30 ? "var(--red)" : daysUntil(r.cert_end_date) <= 60 ? "var(--amber)" : "var(--txt-hi)" }}>{daysUntil(r.cert_end_date)}d</span>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <span style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: urgent ? "var(--red)" : "var(--txt-hi)" }}>{r.days_remaining}d</span>
-        </div>
+        {tab !== "Renewal" && (
+          <div style={{ textAlign: "right" }}>
+            <span style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: urgent ? "var(--red)" : "var(--txt-hi)" }}>{r.days_remaining}d</span>
+          </div>
+        )}
         <div>
           <select value={isExpired(r) ? "__expired" : r.status} onClick={e => e.stopPropagation()} onChange={e => { if (e.target.value !== "__expired") onStatus(r, e.target.value); }}
             style={{ padding: "6px 8px", fontSize: 12.5, borderRadius: 6, background: statusStyle(effStatus(r)).bg, color: statusStyle(effStatus(r)).fg, border: "1px solid var(--line)", fontWeight: 500 }}>
@@ -635,7 +639,7 @@ export default function Dashboard() {
         <div className="card" style={{ borderRadius: 12, overflow: "hidden" }}>
           <ListHeader allSelected={allSelected} onToggleAll={toggleAll} sortDir={reissueSort} onSortReissue={cycleReissueSort} tab={flt.handover} />
           {filtered.map((r, i) => (
-            <CaseRow key={r.id} r={r} last={i === filtered.length - 1}
+            <CaseRow key={r.id} r={r} last={i === filtered.length - 1} tab={flt.handover}
               selected={selectedIds.has(r.id)} onToggle={toggleSelect}
               onEdit={x => { setEditing(x); setShowForm(true); }}
               onDelete={x => setConfirmDel(x)}
