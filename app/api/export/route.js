@@ -21,7 +21,7 @@ function buildWorkbook(data, includeCosts) {
       "Days Remaining In Order": r.days_remaining,
       "Replacement Certificate": r.replacement_years + " Year",
       "Handover Type": r.handover_type,
-      "Case Status": r.status === "Completed" ? `${r.handover_type} completed` : r.status,
+      "Case Status": (r.status === "No action taken" && new Date(r.cert_end_date) < new Date(new Date().toISOString().slice(0,10))) ? "Expired" : r.status === "Completed" ? `${r.handover_type} completed` : r.status,
       "Sent To SSL Indonesia On": r.sent_to_partner_at ? r.sent_to_partner_at.slice(0, 10) : "",
       "Completed On": r.completed_at ? r.completed_at.slice(0, 10) : "",
       "SSL Indonesia Order #": r.replacement_order_number || "",
@@ -78,7 +78,10 @@ export async function GET(req) {
   if (product) q = q.eq("product_type", product);
   if (handover) q = q.eq("handover_type", handover);
   if (years) q = q.eq("replacement_years", Number(years));
-  if (status) q = q.eq("status", status);
+  const today = new Date().toISOString().slice(0, 10);
+  if (status === "Expired") q = q.eq("status", "No action taken").lt("cert_end_date", today);
+  else if (status === "No action taken") q = q.eq("status", "No action taken").gte("cert_end_date", today);
+  else if (status) q = q.eq("status", status);
 
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

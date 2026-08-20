@@ -58,7 +58,7 @@ export async function POST(req) {
     pusat_cost: body.pusat_cost === "" || body.pusat_cost == null ? null : Number(body.pusat_cost),
     ssl_indonesia_cost: body.ssl_indonesia_cost === "" || body.ssl_indonesia_cost == null ? null : Number(body.ssl_indonesia_cost),
     notes: body.notes || null,
-    status: body.status || "Pending to send",
+    status: body.status || "No action taken",
     replacement_order_number: body.replacement_order_number || null
   }).select().single();
 

@@ -2,11 +2,19 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 
 const PRODUCTS = ["DV SSL","OV SSL","EV SSL","DV Wildcard","OV Wildcard","EV Wildcard","Multi-Domain SAN","Code Signing","S/MIME","Other"];
-const CASE_STATUS = ["Pending to send","Sent to SSL Indonesia","On hold","Completed","Cancelled"];
+const CASE_STATUS = ["No action taken","Pending to send","Sent to SSL Indonesia","On hold","Completed","Cancelled"];
+const FILTER_STATUS = [...CASE_STATUS, "Expired"];
+function isExpired(r) {
+  return r.status === "No action taken" && daysUntil(r.cert_end_date) <= 0;
+}
+function effStatus(r) {
+  return isExpired(r) ? "Expired" : r.status;
+}
 function statusLabel(st, handover) {
   return st === "Completed" ? `${handover} completed` : st;
 }
 function statusStyle(st) {
+  if (st === "Expired") return { bg: "var(--red-dim)", fg: "var(--red)" };
   if (st === "Completed") return { bg: "var(--green-dim)", fg: "var(--green)" };
   if (st === "Sent to SSL Indonesia") return { bg: "var(--cyan-dim)", fg: "var(--cyan-deep)" };
   if (st === "On hold") return { bg: "var(--amber-dim)", fg: "var(--amber)" };
@@ -310,8 +318,9 @@ function CaseRow({ r, last, selected, onToggle, onEdit, onDelete, onStatus }) {
           <span style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: urgent ? "var(--red)" : "var(--txt-hi)" }}>{r.days_remaining}d</span>
         </div>
         <div>
-          <select value={r.status} onClick={e => e.stopPropagation()} onChange={e => onStatus(r, e.target.value)}
-            style={{ padding: "6px 8px", fontSize: 12.5, borderRadius: 6, background: statusStyle(r.status).bg, color: statusStyle(r.status).fg, border: "1px solid var(--line)", fontWeight: 500 }}>
+          <select value={isExpired(r) ? "__expired" : r.status} onClick={e => e.stopPropagation()} onChange={e => { if (e.target.value !== "__expired") onStatus(r, e.target.value); }}
+            style={{ padding: "6px 8px", fontSize: 12.5, borderRadius: 6, background: statusStyle(effStatus(r)).bg, color: statusStyle(effStatus(r)).fg, border: "1px solid var(--line)", fontWeight: 500 }}>
+            {isExpired(r) && <option value="__expired">Expired</option>}
             {CASE_STATUS.map(st => <option key={st} value={st}>{statusLabel(st, r.handover_type)}</option>)}
           </select>
           {r.status === "Sent to SSL Indonesia" && r.sent_to_partner_at && (
@@ -408,7 +417,7 @@ export default function Dashboard() {
   const baseFiltered = useMemo(() => records.filter(r => {
     if (flt.product && r.product_type !== flt.product) return false;
     if (flt.years && String(r.replacement_years) !== flt.years) return false;
-    if (flt.status && r.status !== flt.status) return false;
+    if (flt.status && effStatus(r) !== flt.status) return false;
     if (flt.from && r.purchase_date < flt.from) return false;
     if (flt.to && r.purchase_date > flt.to) return false;
     if (flt.search) {
@@ -424,7 +433,7 @@ export default function Dashboard() {
     if (flt.product && r.product_type !== flt.product) return false;
     if (flt.handover && r.handover_type !== flt.handover) return false;
     if (flt.years && String(r.replacement_years) !== flt.years) return false;
-    if (flt.status && r.status !== flt.status) return false;
+    if (flt.status && effStatus(r) !== flt.status) return false;
     if (flt.from && r.purchase_date < flt.from) return false;
     if (flt.to && r.purchase_date > flt.to) return false;
     if (flt.search) {
@@ -440,7 +449,8 @@ export default function Dashboard() {
 
   const stats = useMemo(() => ({
     total: records.length,
-    pending: records.filter(r => r.status === "Pending to send").length,
+    noaction: records.filter(r => r.status === "No action taken" && !isExpired(r)).length,
+    expired: records.filter(r => isExpired(r)).length,
     sent: records.filter(r => r.status === "Sent to SSL Indonesia").length,
     done: records.filter(r => r.status === "Completed").length,
     urgent: records.filter(r => r.days_remaining < 90).length,
@@ -520,7 +530,8 @@ export default function Dashboard() {
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(135px, 1fr))", gap: 10, margin: "22px 0" }}>
         <Stat label="Total cases" value={stats.total} onClick={() => setFlt(f => ({ ...f, years: "", status: "" }))} />
-        <Stat label="Pending to send" value={stats.pending} accent="var(--amber)" active={flt.status === "Pending to send"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Pending to send" ? "" : "Pending to send" }))} />
+        <Stat label="No action taken" value={stats.noaction} accent="var(--amber)" active={flt.status === "No action taken"} onClick={() => setFlt(f => ({ ...f, status: f.status === "No action taken" ? "" : "No action taken" }))} />
+        <Stat label="Expired" value={stats.expired} accent="var(--red)" active={flt.status === "Expired"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Expired" ? "" : "Expired" }))} />
         <Stat label="Sent to SSL Indonesia" value={stats.sent} accent="var(--cyan)" active={flt.status === "Sent to SSL Indonesia"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Sent to SSL Indonesia" ? "" : "Sent to SSL Indonesia" }))} />
         <Stat label="Completed" value={stats.done} accent="var(--green)" active={flt.status === "Completed"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Completed" ? "" : "Completed" }))} />
         <Stat label="Under 90 days" value={stats.urgent} accent="var(--red)" sub="urgent" />
@@ -550,7 +561,7 @@ export default function Dashboard() {
           </select>
           <select value={flt.status} onChange={e => setFlt(f => ({ ...f, status: e.target.value }))}>
             <option value="">Any status</option>
-            {CASE_STATUS.map(st => <option key={st} value={st}>{st}</option>)}
+            {FILTER_STATUS.map(st => <option key={st} value={st}>{st}</option>)}
           </select>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--line)", flexWrap: "wrap", gap: 10 }}>
