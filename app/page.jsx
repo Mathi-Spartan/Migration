@@ -281,8 +281,8 @@ function CaseForm({ initial, onClose, onSaved, products }) {
 }
 
 /* ---------- Case table ---------- */
-const COLS_FULL = "26px minmax(124px,1.1fr) 86px minmax(114px,1fr) 78px 68px 76px 84px 74px 92px 136px 24px";
-const COLS_RENEWAL = "26px minmax(140px,1.2fr) 90px minmax(130px,1.05fr) 84px 74px 80px 90px 80px 140px 24px";
+const COLS_FULL = "26px minmax(116px,1.1fr) 84px minmax(106px,1fr) 76px 66px 74px 82px 72px 88px 132px 52px 24px";
+const COLS_RENEWAL = "26px minmax(132px,1.2fr) 88px minmax(122px,1.05fr) 82px 72px 78px 88px 78px 136px 52px 24px";
 const colsFor = (tab) => tab === "Renewal" ? COLS_RENEWAL : COLS_FULL;
 
 function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue, tab }) {
@@ -305,12 +305,53 @@ function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue, tab }) {
       {tab !== "Renewal" && <span style={{ ...h, textAlign: "right", lineHeight: 1.25 }}>{runwayLabel}</span>}
       <span style={h}>Case status</span>
       <span />
+      <span />
     </div>
   );
 }
 
 function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus }) {
   const [open, setOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const sendHandover = async (e) => {
+    e.stopPropagation();
+    setSending(true);
+    try {
+      const res = await fetch("/api/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [r.id] })
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `handover-${r.order_number}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch {}
+    const action = r.handover_type === "Renewal" ? "renew" : "reissue";
+    const body = [
+      "Hi Team,",
+      "",
+      `We are moving this account from PusatSSL to SSL Indonesia. Please coordinate with the end customer to help them ${action} the certificate.`,
+      "",
+      `Order: ${r.order_number}`,
+      `Domain: ${r.domain_name}`,
+      `Product: ${r.product_type}`,
+      `Handover type: ${r.handover_type}`,
+      `Current cert expires: ${r.cert_end_date}`,
+      `Replacement to issue: ${r.replacement_years}-year`,
+      r.admin_name ? `Customer contact: ${r.admin_name}${r.admin_email ? " · " + r.admin_email : ""}${r.admin_phone ? " · " + r.admin_phone : ""}` : null,
+      "",
+      `Order sheet: handover-${r.order_number}.xlsx (just downloaded — please attach before sending)`
+    ].filter(x => x !== null).join("\r\n");
+    window.location.href = `mailto:mathimcafee@gmail.com?subject=${encodeURIComponent("Account handover")}&body=${encodeURIComponent(body)}`;
+    setSending(false);
+  };
   const urgent = r.days_remaining < 90;
   return (
     <div style={{ borderBottom: last && !open ? "none" : "1px solid var(--line)" }}>
@@ -347,6 +388,10 @@ function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus 
             <div style={{ fontSize: 11, color: "var(--green)", marginTop: 3 }}>{fmtDate(r.completed_at.slice(0,10))}</div>
           )}
         </div>
+        <button onClick={sendHandover} disabled={sending} title="Download order sheet + open email to SSL Indonesia"
+          style={{ padding: "5px 10px", fontSize: 12, fontWeight: 600, background: "var(--cyan)", color: "#fff", borderRadius: 6 }}>
+          Send
+        </button>
         <span style={{ color: "var(--txt-low)", fontSize: 12, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", textAlign: "center" }}>▾</span>
       </div>
 
