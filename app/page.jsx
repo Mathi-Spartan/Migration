@@ -256,43 +256,46 @@ function CaseForm({ initial, onClose, onSaved, products }) {
 }
 
 /* ---------- Case table ---------- */
-const COLS = "minmax(200px,1.6fr) 100px 88px 96px 110px 88px 168px 36px";
+const COLS = "26px minmax(140px,1.1fr) 92px minmax(130px,1fr) 88px 76px 84px 92px 72px 148px 24px";
 
-function ListHeader() {
-  const h = { fontSize: 11.5, fontWeight: 600, color: "var(--txt-low)", textTransform: "uppercase", letterSpacing: "0.06em" };
+function ListHeader({ allSelected, onToggleAll }) {
+  const h = { fontSize: 11, fontWeight: 600, color: "var(--txt-low)", textTransform: "uppercase", letterSpacing: "0.05em" };
   return (
-    <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 12, alignItems: "center", padding: "10px 18px", borderBottom: "1px solid var(--line)", background: "var(--ink-2)", borderRadius: "12px 12px 0 0" }}>
-      <span style={h}>Certificate</span>
+    <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 10, alignItems: "center", padding: "10px 14px", borderBottom: "1px solid var(--line)", background: "var(--ink-2)", borderRadius: "12px 12px 0 0" }}>
+      <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Select all" style={{ width: 15, height: 15, cursor: "pointer", accentColor: "#3375b1" }} />
+      <span style={h}>Domain</span>
+      <span style={h}>Order #</span>
+      <span style={h}>Product</span>
       <span style={h}>Source</span>
       <span style={h}>Payment</span>
       <span style={h}>Handover</span>
       <span style={h}>Replacement</span>
-      <span style={{ ...h, textAlign: "right" }}>Order left</span>
+      <span style={{ ...h, textAlign: "right" }}>Left</span>
       <span style={h}>Case status</span>
       <span />
     </div>
   );
 }
 
-function CaseRow({ r, last, onEdit, onDelete, onStatus }) {
+function CaseRow({ r, last, selected, onToggle, onEdit, onDelete, onStatus }) {
   const [open, setOpen] = useState(false);
   const urgent = r.days_remaining < 90;
   return (
     <div style={{ borderBottom: last && !open ? "none" : "1px solid var(--line)" }}>
-      <div onClick={() => setOpen(o => !o)} style={{ display: "grid", gridTemplateColumns: COLS, gap: 12, alignItems: "center", padding: "13px 18px", cursor: "pointer", background: open ? "var(--ink-2)" : "transparent" }}>
-        <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: tierColor(r.replacement_years), flexShrink: 0 }} />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.domain_name}</div>
-            <div style={{ fontSize: 12, color: "var(--txt-low)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.order_number} · {r.product_type}</div>
-          </div>
+      <div onClick={() => setOpen(o => !o)} style={{ display: "grid", gridTemplateColumns: COLS, gap: 10, alignItems: "center", padding: "12px 14px", cursor: "pointer", background: open ? "var(--ink-2)" : "transparent" }}>
+        <input type="checkbox" checked={selected} onClick={e => e.stopPropagation()} onChange={() => onToggle(r.id)} aria-label={"Select " + r.order_number} style={{ width: 15, height: 15, cursor: "pointer", accentColor: "#3375b1" }} />
+        <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: tierColor(r.replacement_years), flexShrink: 0 }} />
+          <span style={{ fontWeight: 600, fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.domain_name}</span>
         </div>
-        <span style={{ fontSize: 13, color: "var(--txt-mid)" }}>{r.purchased_from || "—"}</span>
+        <span className="mono" style={{ fontSize: 12, color: "var(--txt-mid)", whiteSpace: "nowrap" }}>{r.order_number}</span>
+        <span title={r.product_type} style={{ fontSize: 12.5, color: "var(--txt-mid)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.product_type}</span>
+        <span style={{ fontSize: 12.5, color: "var(--txt-mid)" }}>{r.purchased_from || "—"}</span>
         <Pill color={r.payment_status === "Paid" ? "var(--green)" : "var(--red)"} dim={r.payment_status === "Paid" ? "var(--green-dim)" : "var(--red-dim)"}>{r.payment_status}</Pill>
-        <span style={{ fontSize: 13, color: "var(--txt-mid)" }}>{r.handover_type}</span>
+        <span style={{ fontSize: 12.5, color: "var(--txt-mid)" }}>{r.handover_type}</span>
         <Pill color={tierColor(r.replacement_years)} dim={tierDim(r.replacement_years)}>{r.replacement_years}-year</Pill>
         <div style={{ textAlign: "right" }}>
-          <span style={{ fontSize: 14.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: urgent ? "var(--red)" : "var(--txt-hi)" }}>{r.days_remaining}d</span>
+          <span style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: urgent ? "var(--red)" : "var(--txt-hi)" }}>{r.days_remaining}d</span>
         </div>
         <div>
           <select value={r.status} onClick={e => e.stopPropagation()} onChange={e => onStatus(r, e.target.value)}
@@ -355,6 +358,7 @@ export default function Dashboard() {
   const [confirmDel, setConfirmDel] = useState(null);
   const [flt, setFlt] = useState({ search: "", from: "", to: "", product: "", handover: "", years: "", status: "" });
   const [includeCosts, setIncludeCosts] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [preset, setPreset] = useState("");
 
   const load = useCallback(async () => {
@@ -424,6 +428,33 @@ export default function Dashboard() {
     y2: records.filter(r => r.replacement_years === 2).length,
     y3: records.filter(r => r.replacement_years === 3).length,
   }), [records]);
+
+  const toggleSelect = (id) => setSelectedIds(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
+  const allSelected = filtered.length > 0 && filtered.every(r => selectedIds.has(r.id));
+  const toggleAll = () => setSelectedIds(prev => {
+    const n = new Set(prev);
+    if (allSelected) filtered.forEach(r => n.delete(r.id));
+    else filtered.forEach(r => n.add(r.id));
+    return n;
+  });
+
+  const exportSelected = async () => {
+    const res = await fetch("/api/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...selectedIds], costs: includeCosts })
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pusat-migration-selected-${new Date().toISOString().slice(0,10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const exportExcel = () => {
     const p = new URLSearchParams();
@@ -503,14 +534,23 @@ export default function Dashboard() {
           </select>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--line)", flexWrap: "wrap", gap: 10 }}>
-          <span style={{ fontSize: 13, color: "var(--txt-low)" }}>Showing {filtered.length} of {records.length} cases</span>
+          <span style={{ fontSize: 13, color: "var(--txt-low)" }}>
+            Showing {filtered.length} of {records.length} cases
+            {selectedIds.size > 0 && <span style={{ color: "var(--cyan-deep)", fontWeight: 600 }}> · {selectedIds.size} selected</span>}
+            {selectedIds.size > 0 && <button onClick={() => setSelectedIds(new Set())} style={{ background: "transparent", color: "var(--txt-low)", fontSize: 12.5, padding: "2px 8px", textDecoration: "underline" }}>clear</button>}
+          </span>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--txt-mid)", cursor: "pointer" }}>
               <input type="checkbox" checked={includeCosts} onChange={e => setIncludeCosts(e.target.checked)} style={{ width: "auto" }} />
               Include cost columns
             </label>
+            {selectedIds.size > 0 && (
+              <button onClick={exportSelected} style={{ background: "var(--cyan)", color: "#fff", padding: "9px 20px", fontSize: 13.5, fontWeight: 600 }}>
+                Export selected ({selectedIds.size})
+              </button>
+            )}
             <button onClick={exportExcel} disabled={filtered.length === 0} style={{ background: "#fff", color: "var(--cyan-deep)", padding: "9px 20px", fontSize: 13.5, fontWeight: 600, border: "1px solid var(--cyan)" }}>
-              Export Excel
+              Export all shown
             </button>
           </div>
         </div>
@@ -550,9 +590,10 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="card" style={{ borderRadius: 12, overflow: "hidden" }}>
-          <ListHeader />
+          <ListHeader allSelected={allSelected} onToggleAll={toggleAll} />
           {filtered.map((r, i) => (
             <CaseRow key={r.id} r={r} last={i === filtered.length - 1}
+              selected={selectedIds.has(r.id)} onToggle={toggleSelect}
               onEdit={x => { setEditing(x); setShowForm(true); }}
               onDelete={x => setConfirmDel(x)}
               onStatus={onStatus} />
