@@ -314,25 +314,9 @@ function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus 
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
 
-  const sendHandover = async (e) => {
+  const sendHandover = (e) => {
     e.stopPropagation();
     setSending(true);
-    try {
-      const res = await fetch("/api/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [r.id] })
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `handover-${r.order_number}.xlsx`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch {}
     const action = r.handover_type === "Renewal" ? "renew" : "reissue";
     const body = [
       "Hi Team,",
@@ -350,7 +334,20 @@ function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus 
       `Order sheet: handover-${r.order_number}.xlsx (just downloaded — please attach before sending)`
     ].filter(x => x !== null).join("\r\n");
     window.location.href = `mailto:mathimcafee@gmail.com?subject=${encodeURIComponent("Account handover")}&body=${encodeURIComponent(body)}`;
-    setSending(false);
+
+    fetch("/api/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [r.id] })
+    }).then(res => res.ok ? res.blob() : null).then(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `handover-${r.order_number}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }).catch(() => {}).finally(() => setSending(false));
   };
   const urgent = r.days_remaining < 90;
   return (
