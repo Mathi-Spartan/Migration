@@ -9,6 +9,13 @@ export async function PATCH(req, { params }) {
   const patch = { ...body, updated_at: new Date().toISOString() };
   delete patch.id; delete patch.created_at;
 
+  if (patch.status === "Sent to SSL Indonesia") {
+    patch.sent_to_partner_at = patch.sent_to_partner_at || new Date().toISOString();
+  }
+  if (patch.status === "Completed") {
+    patch.completed_at = patch.completed_at || new Date().toISOString();
+  }
+
   if (patch.cert_end_date && patch.order_expiry_date) {
     const { diffDays, years } = calcReplacement(patch.cert_end_date, patch.order_expiry_date);
     patch.days_remaining = diffDays;

@@ -2,7 +2,21 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 
 const PRODUCTS = ["DV SSL","OV SSL","EV SSL","DV Wildcard","OV Wildcard","EV Wildcard","Multi-Domain SAN","Code Signing","S/MIME","Other"];
-const CASE_STATUS = ["Pending","In Progress","Completed"];
+const CASE_STATUS = ["Pending to send","Sent to SSL Indonesia","On hold","Completed","Cancelled"];
+function statusLabel(st, handover) {
+  return st === "Completed" ? `${handover} completed` : st;
+}
+function statusStyle(st) {
+  if (st === "Completed") return { bg: "var(--green-dim)", fg: "var(--green)" };
+  if (st === "Sent to SSL Indonesia") return { bg: "var(--cyan-dim)", fg: "var(--cyan-deep)" };
+  if (st === "On hold") return { bg: "var(--amber-dim)", fg: "var(--amber)" };
+  if (st === "Cancelled") return { bg: "var(--red-dim)", fg: "var(--red)" };
+  return { bg: "var(--ink-1)", fg: "var(--txt-mid)" };
+}
+function daysAgo(iso) {
+  if (!iso) return null;
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
+}
 
 const S = {
   page: { maxWidth: 1180, margin: "0 auto", padding: "0 24px 80px", overflowX: "hidden" },
@@ -134,7 +148,7 @@ function DateField({ label, value, onChange, error, span }) {
 const emptyForm = {
   order_number: "", purchase_date: "", payment_status: "Paid", product_type: "", purchased_from: "GoGetSSL",
   domain_name: "", cert_purchase_years: "", cert_start_date: "", cert_end_date: "",
-  order_expiry_date: "", handover_type: "Reissue", pusat_cost: "", ssl_indonesia_cost: "", notes: ""
+  order_expiry_date: "", handover_type: "Reissue", pusat_cost: "", ssl_indonesia_cost: "", notes: "", replacement_order_number: ""
 };
 
 function CaseForm({ initial, onClose, onSaved, products }) {
@@ -217,7 +231,8 @@ function CaseForm({ initial, onClose, onSaved, products }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px" }}>
             <TextField label="Pusat-SSL cost (USD)" value={f.pusat_cost} onChange={set("pusat_cost")} type="number" placeholder="0.00" />
             <TextField label="SSL-Indonesia cost (USD)" value={f.ssl_indonesia_cost} onChange={set("ssl_indonesia_cost")} type="number" placeholder="0.00" />
-            <TextField label="Notes" value={f.notes} onChange={set("notes")} placeholder="Customer contact, ticket ref…" span />
+            <TextField label="SSL Indonesia order number" value={f.replacement_order_number} onChange={set("replacement_order_number")} placeholder="New order ref once issued" />
+            <TextField label="Notes" value={f.notes} onChange={set("notes")} placeholder="Customer contact, ticket ref…" />
           </div>
         </div>
 
@@ -235,7 +250,7 @@ function CaseForm({ initial, onClose, onSaved, products }) {
 }
 
 /* ---------- Case table ---------- */
-const COLS = "minmax(210px,1.6fr) 110px 92px 100px 118px 92px 132px 40px";
+const COLS = "minmax(200px,1.6fr) 100px 88px 96px 110px 88px 168px 36px";
 
 function ListHeader() {
   const h = { fontSize: 11.5, fontWeight: 600, color: "var(--txt-low)", textTransform: "uppercase", letterSpacing: "0.06em" };
@@ -273,10 +288,18 @@ function CaseRow({ r, last, onEdit, onDelete, onStatus }) {
         <div style={{ textAlign: "right" }}>
           <span style={{ fontSize: 14.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: urgent ? "var(--red)" : "var(--txt-hi)" }}>{r.days_remaining}d</span>
         </div>
-        <select value={r.status} onClick={e => e.stopPropagation()} onChange={e => onStatus(r, e.target.value)}
-          style={{ padding: "6px 8px", fontSize: 12.5, borderRadius: 6, background: r.status === "Completed" ? "var(--green-dim)" : r.status === "In Progress" ? "var(--amber-dim)" : "var(--ink-1)", color: r.status === "Completed" ? "var(--green)" : r.status === "In Progress" ? "var(--amber)" : "var(--txt-mid)", border: "1px solid var(--line)" }}>
-          {CASE_STATUS.map(st => <option key={st} value={st}>{st}</option>)}
-        </select>
+        <div>
+          <select value={r.status} onClick={e => e.stopPropagation()} onChange={e => onStatus(r, e.target.value)}
+            style={{ padding: "6px 8px", fontSize: 12.5, borderRadius: 6, background: statusStyle(r.status).bg, color: statusStyle(r.status).fg, border: "1px solid var(--line)", fontWeight: 500 }}>
+            {CASE_STATUS.map(st => <option key={st} value={st}>{statusLabel(st, r.handover_type)}</option>)}
+          </select>
+          {r.status === "Sent to SSL Indonesia" && r.sent_to_partner_at && (
+            <div style={{ fontSize: 11, color: "var(--txt-low)", marginTop: 3 }}>sent {daysAgo(r.sent_to_partner_at)}d ago</div>
+          )}
+          {r.status === "Completed" && r.completed_at && (
+            <div style={{ fontSize: 11, color: "var(--green)", marginTop: 3 }}>{fmtDate(r.completed_at.slice(0,10))}</div>
+          )}
+        </div>
         <span style={{ color: "var(--txt-low)", fontSize: 12, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", textAlign: "center" }}>▾</span>
       </div>
 
@@ -291,6 +314,9 @@ function CaseRow({ r, last, onEdit, onDelete, onStatus }) {
                 ["Cert validity", `${fmtDate(r.cert_start_date)} → ${fmtDate(r.cert_end_date)}`],
                 ["Order expiry", fmtDate(r.order_expiry_date)],
                 ["Bought years", r.cert_purchase_years + "y"],
+                r.replacement_order_number ? ["SSL Indonesia order #", r.replacement_order_number] : null,
+                r.sent_to_partner_at ? ["Sent to SSL Indonesia", fmtDate(r.sent_to_partner_at.slice(0,10))] : null,
+                r.completed_at ? ["Completed on", fmtDate(r.completed_at.slice(0,10))] : null,
                 r.pusat_cost != null ? ["Pusat-SSL cost", "$" + r.pusat_cost] : null,
                 r.ssl_indonesia_cost != null ? ["SSL-Indonesia cost", "$" + r.ssl_indonesia_cost] : null,
               ].filter(Boolean).map(([k, v]) => (
@@ -371,7 +397,8 @@ export default function Dashboard() {
 
   const stats = useMemo(() => ({
     total: records.length,
-    pending: records.filter(r => r.status === "Pending").length,
+    pending: records.filter(r => r.status === "Pending to send").length,
+    sent: records.filter(r => r.status === "Sent to SSL Indonesia").length,
     done: records.filter(r => r.status === "Completed").length,
     urgent: records.filter(r => r.days_remaining < 90).length,
     y1: records.filter(r => r.replacement_years === 1).length,
@@ -423,7 +450,8 @@ export default function Dashboard() {
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(135px, 1fr))", gap: 10, margin: "22px 0" }}>
         <Stat label="Total cases" value={stats.total} onClick={() => setFlt(f => ({ ...f, years: "", status: "" }))} />
-        <Stat label="Pending" value={stats.pending} accent="var(--txt-mid)" active={flt.status === "Pending"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Pending" ? "" : "Pending" }))} />
+        <Stat label="Pending to send" value={stats.pending} accent="var(--amber)" active={flt.status === "Pending to send"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Pending to send" ? "" : "Pending to send" }))} />
+        <Stat label="Sent to SSL Indonesia" value={stats.sent} accent="var(--cyan)" active={flt.status === "Sent to SSL Indonesia"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Sent to SSL Indonesia" ? "" : "Sent to SSL Indonesia" }))} />
         <Stat label="Completed" value={stats.done} accent="var(--green)" active={flt.status === "Completed"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Completed" ? "" : "Completed" }))} />
         <Stat label="Under 90 days" value={stats.urgent} accent="var(--red)" sub="urgent" />
         <Stat label="1-year tier" value={stats.y1} accent="var(--green)" sub="≤ 365d left" active={flt.years === "1"} onClick={() => setFlt(f => ({ ...f, years: f.years === "1" ? "" : "1" }))} />
@@ -456,7 +484,7 @@ export default function Dashboard() {
           </select>
           <select value={flt.status} onChange={e => setFlt(f => ({ ...f, status: e.target.value }))}>
             <option value="">Any status</option>
-            {CASE_STATUS.map(s => <option key={s}>{s}</option>)}
+            {CASE_STATUS.map(st => <option key={st} value={st}>{st}</option>)}
           </select>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--line)", flexWrap: "wrap", gap: 10 }}>

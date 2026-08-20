@@ -42,7 +42,10 @@ export async function GET(req) {
       "Days Remaining In Order": r.days_remaining,
       "Replacement Certificate": r.replacement_years + " Year",
       "Handover Type": r.handover_type,
-      "Case Status": r.status,
+      "Case Status": r.status === "Completed" ? `${r.handover_type} completed` : r.status,
+      "Sent To SSL Indonesia On": r.sent_to_partner_at ? r.sent_to_partner_at.slice(0, 10) : "",
+      "Completed On": r.completed_at ? r.completed_at.slice(0, 10) : "",
+      "SSL Indonesia Order #": r.replacement_order_number || "",
       "Notes": r.notes || ""
     };
     if (includeCosts) {
