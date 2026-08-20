@@ -17,6 +17,7 @@ function buildWorkbook(data, includeCosts) {
       "Cert Start Date": r.cert_start_date,
       "Cert End Date": r.cert_end_date,
       "Order Expiry Date": r.order_expiry_date,
+      "Days To Reissue (Cert Expires In)": Math.floor((new Date(r.cert_end_date + "T00:00:00") - new Date(new Date().toISOString().slice(0,10) + "T00:00:00")) / 86400000),
       "Days Remaining In Order": r.days_remaining,
       "Replacement Certificate": r.replacement_years + " Year",
       "Handover Type": r.handover_type,

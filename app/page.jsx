@@ -13,6 +13,12 @@ function statusStyle(st) {
   if (st === "Cancelled") return { bg: "var(--red-dim)", fg: "var(--red)" };
   return { bg: "var(--ink-1)", fg: "var(--txt-mid)" };
 }
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.floor((new Date(dateStr + "T00:00:00") - today) / 86400000);
+}
+
 function daysAgo(iso) {
   if (!iso) return null;
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
@@ -256,7 +262,7 @@ function CaseForm({ initial, onClose, onSaved, products }) {
 }
 
 /* ---------- Case table ---------- */
-const COLS = "26px minmax(140px,1.1fr) 92px minmax(130px,1fr) 88px 76px 84px 92px 72px 148px 24px";
+const COLS = "26px minmax(128px,1.1fr) 88px minmax(118px,1fr) 80px 70px 78px 86px 76px 74px 140px 24px";
 
 function ListHeader({ allSelected, onToggleAll }) {
   const h = { fontSize: 11, fontWeight: 600, color: "var(--txt-low)", textTransform: "uppercase", letterSpacing: "0.05em" };
@@ -270,7 +276,8 @@ function ListHeader({ allSelected, onToggleAll }) {
       <span style={h}>Payment</span>
       <span style={h}>Handover</span>
       <span style={h}>Replacement</span>
-      <span style={{ ...h, textAlign: "right" }}>Left</span>
+      <span style={{ ...h, textAlign: "right" }}>Reissue in</span>
+      <span style={{ ...h, textAlign: "right" }}>Order left</span>
       <span style={h}>Case status</span>
       <span />
     </div>
@@ -295,6 +302,9 @@ function CaseRow({ r, last, selected, onToggle, onEdit, onDelete, onStatus }) {
         <span style={{ fontSize: 12.5, color: "var(--txt-mid)" }}>{r.handover_type}</span>
         <Pill color={tierColor(r.replacement_years)} dim={tierDim(r.replacement_years)}>{r.replacement_years}-year</Pill>
         <div style={{ textAlign: "right" }}>
+          <span className={daysUntil(r.cert_end_date) <= 30 ? "pulse" : ""} style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: daysUntil(r.cert_end_date) <= 30 ? "var(--red)" : daysUntil(r.cert_end_date) <= 60 ? "var(--amber)" : "var(--txt-hi)" }}>{daysUntil(r.cert_end_date)}d</span>
+        </div>
+        <div style={{ textAlign: "right" }}>
           <span style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: urgent ? "var(--red)" : "var(--txt-hi)" }}>{r.days_remaining}d</span>
         </div>
         <div>
@@ -318,6 +328,7 @@ function CaseRow({ r, last, selected, onToggle, onEdit, onDelete, onStatus }) {
             <ValidityBar certStart={r.cert_start_date} certEnd={r.cert_end_date} orderExpiry={r.order_expiry_date} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginTop: 22 }}>
               {[
+                ["Days to reissue", `${daysUntil(r.cert_end_date)} days — cert expires ${fmtDate(r.cert_end_date)}`],
                 ["Purchased", fmtDate(r.purchase_date)],
                 ["Purchased from", r.purchased_from || "—"],
                 ["Cert validity", `${fmtDate(r.cert_start_date)} → ${fmtDate(r.cert_end_date)}`],
