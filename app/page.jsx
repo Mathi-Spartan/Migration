@@ -92,15 +92,14 @@ function ValidityBar({ certStart, certEnd, orderExpiry }) {
 /* ---------- Stat block ---------- */
 function Stat({ label, value, accent, sub, onClick, active }) {
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} title={sub ? `${label} — ${sub}` : label} style={{
       background: active ? "var(--cyan-dim)" : "var(--ink-1)", boxShadow: "var(--shadow)",
       border: `1px solid ${active ? accent || "var(--line-strong)" : "var(--line)"}`,
-      borderRadius: 10, padding: "14px 16px", textAlign: "left",
-      display: "flex", flexDirection: "column", gap: 2, minWidth: 0
+      borderRadius: 9, padding: "8px 12px", textAlign: "left",
+      display: "flex", alignItems: "baseline", gap: 8, minWidth: 0, whiteSpace: "nowrap"
     }}>
-      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--txt-low)" }}>{label}</span>
-      <span style={{ fontSize: 27, fontWeight: 600, color: accent || "var(--txt-hi)", lineHeight: 1.15, fontVariantNumeric: "tabular-nums" }}>{value}</span>
-      {sub && <span style={{ fontSize: 11, color: "var(--txt-low)" }}>{sub}</span>}
+      <span style={{ fontSize: 19, fontWeight: 600, color: accent || "var(--txt-hi)", lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>{value}</span>
+      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--txt-mid)", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
     </button>
   );
 }
@@ -528,7 +527,7 @@ export default function Dashboard() {
 
   return (
     <main style={S.page}>
-      <header className="hero-band" style={{ margin: "0 -24px", padding: "34px 24px 30px", display: "flex", justifyContent: "center" }}>
+      <header className="hero-band" style={{ margin: "0 -24px", padding: "24px 24px 22px", display: "flex", justifyContent: "center" }}>
         <div style={{ width: "100%", maxWidth: 1132, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
           <div>
             <div className="mono" style={{ fontSize: 11, letterSpacing: "0.18em", color: "var(--sky)", textTransform: "uppercase", marginBottom: 8 }}>Migration control</div>
@@ -545,19 +544,19 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(135px, 1fr))", gap: 10, margin: "22px 0" }}>
-        <Stat label="Total cases" value={stats.total} onClick={() => setFlt(f => ({ ...f, years: "", status: "" }))} />
-        <Stat label="No action taken" value={stats.noaction} accent="var(--amber)" active={flt.status === "No action taken"} onClick={() => setFlt(f => ({ ...f, status: f.status === "No action taken" ? "" : "No action taken" }))} />
+      <section style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "16px 0 14px" }}>
+        <Stat label="Total" value={stats.total} onClick={() => setFlt(f => ({ ...f, years: "", status: "" }))} />
+        <Stat label="No action" value={stats.noaction} accent="var(--amber)" active={flt.status === "No action taken"} onClick={() => setFlt(f => ({ ...f, status: f.status === "No action taken" ? "" : "No action taken" }))} />
         <Stat label="Expired" value={stats.expired} accent="var(--red)" active={flt.status === "Expired"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Expired" ? "" : "Expired" }))} />
-        <Stat label="Sent to SSL Indonesia" value={stats.sent} accent="var(--cyan)" active={flt.status === "Sent to SSL Indonesia"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Sent to SSL Indonesia" ? "" : "Sent to SSL Indonesia" }))} />
+        <Stat label="Sent to SSL Indo" value={stats.sent} accent="var(--cyan)" active={flt.status === "Sent to SSL Indonesia"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Sent to SSL Indonesia" ? "" : "Sent to SSL Indonesia" }))} />
         <Stat label="Completed" value={stats.done} accent="var(--green)" active={flt.status === "Completed"} onClick={() => setFlt(f => ({ ...f, status: f.status === "Completed" ? "" : "Completed" }))} />
-        <Stat label="Under 90 days" value={stats.urgent} accent="var(--red)" sub="urgent" />
-        <Stat label="1-year tier" value={stats.y1} accent="var(--green)" sub="≤ 365d left" active={flt.years === "1"} onClick={() => setFlt(f => ({ ...f, years: f.years === "1" ? "" : "1" }))} />
-        <Stat label="2-year tier" value={stats.y2} accent="var(--amber)" sub="366–730d" active={flt.years === "2"} onClick={() => setFlt(f => ({ ...f, years: f.years === "2" ? "" : "2" }))} />
-        <Stat label="3-year tier" value={stats.y3} accent="var(--violet)" sub="> 730d" active={flt.years === "3"} onClick={() => setFlt(f => ({ ...f, years: f.years === "3" ? "" : "3" }))} />
+        <Stat label="Under 90d" value={stats.urgent} accent="var(--red)" sub="urgent" />
+        <Stat label="1-yr tier" value={stats.y1} accent="var(--green)" sub="≤365d left" active={flt.years === "1"} onClick={() => setFlt(f => ({ ...f, years: f.years === "1" ? "" : "1" }))} />
+        <Stat label="2-yr tier" value={stats.y2} accent="var(--amber)" sub="366–730d" active={flt.years === "2"} onClick={() => setFlt(f => ({ ...f, years: f.years === "2" ? "" : "2" }))} />
+        <Stat label="3-yr tier" value={stats.y3} accent="var(--violet)" sub=">730d" active={flt.years === "3"} onClick={() => setFlt(f => ({ ...f, years: f.years === "3" ? "" : "3" }))} />
       </section>
 
-      <section className="card" style={{ padding: "16px 18px", marginBottom: 18, borderRadius: 12 }}>
+      <section className="card" style={{ padding: "12px 16px", marginBottom: 14, borderRadius: 12 }}>
         <div style={{ display: "inline-flex", border: "1px solid var(--line-strong)", borderRadius: 8, overflow: "hidden", marginBottom: 12 }}>
           {[["", "All time"], ["week", "Last 7 days"], ["month", "This month"], ["year", "This year"]].map(([v, l], i) => (
             <button key={v} onClick={() => applyPreset(v)} style={{
