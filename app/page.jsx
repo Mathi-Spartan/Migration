@@ -310,13 +310,11 @@ function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue, tab }) {
   );
 }
 
-function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus }) {
+function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus, onSend }) {
   const [open, setOpen] = useState(false);
-  const [sending, setSending] = useState(false);
 
   const sendHandover = (e) => {
     e.stopPropagation();
-    setSending(true);
     const action = r.handover_type === "Renewal" ? "renew" : "reissue";
     const body = [
       "Hi Team,",
@@ -331,23 +329,9 @@ function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus 
       `Replacement to issue: ${r.replacement_years}-year`,
       r.admin_name ? `Customer contact: ${r.admin_name}${r.admin_email ? " · " + r.admin_email : ""}${r.admin_phone ? " · " + r.admin_phone : ""}` : null,
       "",
-      `Order sheet: handover-${r.order_number}.xlsx (just downloaded — please attach before sending)`
+      `Order sheet: handover-${r.order_number}.xlsx (downloaded — please attach before sending)`
     ].filter(x => x !== null).join("\r\n");
-    window.location.href = `mailto:mathimcafee@gmail.com?subject=${encodeURIComponent("Account handover")}&body=${encodeURIComponent(body)}`;
-
-    fetch("/api/export", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: [r.id] })
-    }).then(res => res.ok ? res.blob() : null).then(blob => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `handover-${r.order_number}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }).catch(() => {}).finally(() => setSending(false));
+    onSend({ to: "mathimcafee@gmail.com", subject: "Account handover", body, order: r.order_number, id: r.id });
   };
   const urgent = r.days_remaining < 90;
   return (
@@ -385,7 +369,7 @@ function CaseRow({ r, last, tab, selected, onToggle, onEdit, onDelete, onStatus 
             <div style={{ fontSize: 11, color: "var(--green)", marginTop: 3 }}>{fmtDate(r.completed_at.slice(0,10))}</div>
           )}
         </div>
-        <button onClick={sendHandover} disabled={sending} title="Download order sheet + open email to SSL Indonesia"
+        <button onClick={sendHandover} title="Download order sheet + compose handover email"
           style={{ padding: "5px 10px", fontSize: 12, fontWeight: 600, background: "var(--cyan)", color: "#fff", borderRadius: 6 }}>
           Send
         </button>
@@ -445,6 +429,8 @@ export default function Dashboard() {
   const [flt, setFlt] = useState({ search: "", from: "", to: "", product: "", handover: "Reissue", years: "", status: "" });
   const [exportCols, setExportCols] = useState(new Set(DEFAULT_EXPORT_KEYS));
   const [showColPicker, setShowColPicker] = useState(false);
+  const [compose, setCompose] = useState(null);
+  const [copied, setCopied] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [reissueSort, setReissueSort] = useState(null);
   const [preset, setPreset] = useState("");
@@ -523,6 +509,21 @@ export default function Dashboard() {
     y2: records.filter(r => r.replacement_years === 2).length,
     y3: records.filter(r => r.replacement_years === 3).length,
   }), [records]);
+
+  const openCompose = (payload) => {
+    setCompose(payload); setCopied(false);
+    fetch("/api/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [payload.id] })
+    }).then(res => res.ok ? res.blob() : null).then(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `handover-${payload.order}.xlsx`; a.click();
+      URL.revokeObjectURL(url);
+    }).catch(() => {});
+  };
 
   const toggleSelect = (id) => setSelectedIds(prev => {
     const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
@@ -691,12 +692,41 @@ export default function Dashboard() {
               selected={selectedIds.has(r.id)} onToggle={toggleSelect}
               onEdit={x => { setEditing(x); setShowForm(true); }}
               onDelete={x => setConfirmDel(x)}
-              onStatus={onStatus} />
+              onStatus={onStatus} onSend={openCompose} />
           ))}
         </div>
       )}
 
       {showForm && <CaseForm initial={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={onSaved} products={products} />}
+
+      {compose && (() => {
+        const enc = encodeURIComponent;
+        const gmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${enc(compose.to)}&su=${enc(compose.subject)}&body=${enc(compose.body)}`;
+        const owa = `https://outlook.live.com/mail/0/deeplink/compose?to=${enc(compose.to)}&subject=${enc(compose.subject)}&body=${enc(compose.body)}`;
+        const mailto = `mailto:${compose.to}?subject=${enc(compose.subject)}&body=${enc(compose.body)}`;
+        const btn = { padding: "10px 16px", fontSize: 13.5, fontWeight: 600, borderRadius: 7, border: "1px solid var(--line-strong)", background: "#fff", color: "var(--cyan-deep)", textAlign: "center", textDecoration: "none", display: "block" };
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", zIndex: 58, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 14, padding: "24px 28px", width: "100%", maxWidth: 520, boxShadow: "0 20px 60px rgba(13,17,22,0.25)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <div style={{ fontSize: 17, fontWeight: 600 }}>Send handover — {compose.order}</div>
+                <button onClick={() => setCompose(null)} aria-label="Close" style={{ background: "transparent", color: "var(--txt-mid)", fontSize: 20, padding: "2px 8px" }}>×</button>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--txt-mid)", marginBottom: 14 }}>
+                Order sheet is downloading (handover-{compose.order}.xlsx) — attach it to the draft. Pick where to compose:
+              </p>
+              <div style={{ display: "grid", gap: 8 }}>
+                <a href={owa} target="_blank" rel="noreferrer" style={{ ...btn, background: "var(--cyan)", color: "#fff", borderColor: "transparent" }}>Open in Outlook Web</a>
+                <a href={gmail} target="_blank" rel="noreferrer" style={btn}>Open in Gmail</a>
+                <a href={mailto} style={btn}>Open in desktop mail app</a>
+                <button onClick={() => { navigator.clipboard.writeText(`To: ${compose.to}\nSubject: ${compose.subject}\n\n${compose.body.replace(/\r\n/g, "\n")}`).then(() => setCopied(true)); }} style={{ ...btn, cursor: "pointer" }}>
+                  {copied ? "Copied ✓" : "Copy email text"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showColPicker && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", zIndex: 55, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
