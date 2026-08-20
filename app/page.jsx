@@ -72,8 +72,67 @@ function Pill({ children, color, dim }) {
 }
 
 /* ---------- Form modal ---------- */
+
+const fieldLabel = { fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--txt-low)", display: "block", marginBottom: 5 };
+
+function TextField({ label, value, onChange, error, type = "text", placeholder, options, span }) {
+  return (
+    <div style={{ gridColumn: span ? "1 / -1" : undefined }}>
+      <label style={fieldLabel}>{label}</label>
+      {options ? (
+        <select value={value} onChange={e => onChange(e.target.value)} style={{ borderColor: error ? "var(--red)" : undefined }}>
+          {options.includes(value) ? null : <option value="">Select…</option>}
+          {options.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : (
+        <input type={type} value={value ?? ""} placeholder={placeholder} onChange={e => onChange(e.target.value)} style={{ borderColor: error ? "var(--red)" : undefined }} />
+      )}
+      {error && <div style={{ fontSize: 11, color: "var(--red)", marginTop: 3 }}>{error}</div>}
+    </div>
+  );
+}
+
+function isoToDisplay(iso) {
+  if (!iso || iso.length !== 10) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}-${m}-${y}`;
+}
+
+function DateField({ label, value, onChange, error, span }) {
+  const [txt, setTxt] = useState(isoToDisplay(value));
+  useEffect(() => { setTxt(isoToDisplay(value)); }, [value]);
+
+  const handle = (raw) => {
+    const digits = raw.replace(/\D/g, "").slice(0, 8);
+    let out = digits;
+    if (digits.length > 4) out = digits.slice(0, 2) + "-" + digits.slice(2, 4) + "-" + digits.slice(4);
+    else if (digits.length > 2) out = digits.slice(0, 2) + "-" + digits.slice(2);
+    setTxt(out);
+    if (digits.length === 8) {
+      const d = +digits.slice(0, 2), m = +digits.slice(2, 4), y = +digits.slice(4);
+      const dt = new Date(y, m - 1, d);
+      if (dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d) {
+        onChange(`${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+        return;
+      }
+    }
+    if (value) onChange("");
+  };
+
+  return (
+    <div style={{ gridColumn: span ? "1 / -1" : undefined }}>
+      <label style={fieldLabel}>{label}</label>
+      <input inputMode="numeric" value={txt} placeholder="DD-MM-YYYY" maxLength={10}
+        onChange={e => handle(e.target.value)}
+        style={{ fontFamily: "var(--mono)", letterSpacing: "0.04em", borderColor: error ? "var(--red)" : undefined }} />
+      {error && <div style={{ fontSize: 11, color: "var(--red)", marginTop: 3 }}>{error}</div>}
+    </div>
+  );
+}
+
+
 const emptyForm = {
-  order_number: "", purchase_date: "", payment_status: "Paid", product_type: "",
+  order_number: "", purchase_date: "", payment_status: "Paid", product_type: "", purchased_from: "GoGetSSL",
   domain_name: "", cert_purchase_years: "", cert_start_date: "", cert_end_date: "",
   order_expiry_date: "", handover_type: "Reissue", pusat_cost: "", ssl_indonesia_cost: "", notes: ""
 };
@@ -85,7 +144,7 @@ function CaseForm({ initial, onClose, onSaved, products }) {
   const [saving, setSaving] = useState(false);
   const editing = Boolean(initial?.id);
 
-  const set = (k, v) => { setF(p => ({ ...p, [k]: v })); setErr(p => ({ ...p, [k]: "" })); setApiErr(""); };
+  const set = (k) => (v) => { setF(p => ({ ...p, [k]: v })); setErr(p => ({ ...p, [k]: "" })); setApiErr(""); };
 
   const preview = useMemo(() => {
     if (!f.cert_end_date || !f.order_expiry_date) return null;
@@ -96,7 +155,7 @@ function CaseForm({ initial, onClose, onSaved, products }) {
 
   const submit = async () => {
     const e = {};
-    ["order_number","purchase_date","product_type","domain_name","cert_purchase_years","cert_start_date","cert_end_date","order_expiry_date"].forEach(k => {
+    ["order_number","purchase_date","product_type","purchased_from","domain_name","cert_purchase_years","cert_start_date","cert_end_date","order_expiry_date"].forEach(k => {
       if (!String(f[k] ?? "").trim()) e[k] = "Required";
     });
     if (f.cert_end_date && f.order_expiry_date && f.order_expiry_date < f.cert_end_date)
@@ -119,44 +178,29 @@ function CaseForm({ initial, onClose, onSaved, products }) {
     }
   };
 
-  const Field = ({ k, label, type = "text", options, placeholder, span }) => (
-    <div style={{ gridColumn: span ? "1 / -1" : undefined }}>
-      <label style={{ ...S.label, display: "block", marginBottom: 5 }}>{label}</label>
-      {options ? (
-        <select value={f[k]} onChange={e => set(k, e.target.value)} style={{ borderColor: err[k] ? "var(--red)" : undefined }}>
-          {!["payment_status","handover_type"].includes(k) && <option value="">Select…</option>}
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-      ) : (
-        <input type={type} value={f[k] ?? ""} placeholder={placeholder} onChange={e => set(k, e.target.value)} style={{ borderColor: err[k] ? "var(--red)" : undefined }} />
-      )}
-      {err[k] && <div style={{ fontSize: 11, color: "var(--red)", marginTop: 3 }}>{err[k]}</div>}
-    </div>
-  );
-
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", backdropFilter: "blur(3px)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "40px 16px" }} onClick={onClose}>
-      <div className="fade-up" onClick={e => e.stopPropagation()} style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 14, width: "100%", maxWidth: 700, padding: "26px 28px", boxShadow: "0 20px 60px rgba(13,17,22,0.25)" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", backdropFilter: "blur(3px)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "40px 16px" }}>
+      <div className="fade-up" style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 14, width: "100%", maxWidth: 700, padding: "26px 28px", boxShadow: "0 20px 60px rgba(13,17,22,0.25)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <div style={S.label}>{editing ? "Edit case" : "New migration case"}</div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--txt-low)" }}>{editing ? "Edit case" : "New migration case"}</div>
             <div style={{ fontSize: 19, fontWeight: 600 }}>Pusat SSL <span style={{ color: "var(--txt-low)" }}>→</span> <span style={{ color: "var(--cyan)" }}>SSL Indonesia</span></div>
           </div>
-          <button onClick={onClose} style={{ background: "transparent", color: "var(--txt-mid)", fontSize: 22, padding: "4px 10px" }}>×</button>
+          <button onClick={onClose} aria-label="Close" style={{ background: "transparent", color: "var(--txt-mid)", fontSize: 22, padding: "4px 10px" }}>×</button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px" }}>
-          <Field k="order_number" label="Order number" placeholder="ORD-2024-0815" />
-          <Field k="purchase_date" label="Purchase date" type="date" />
-          <Field k="payment_status" label="Payment status" options={["Paid","Unpaid"]} />
-          <Field k="handover_type" label="Hand over type" options={["Reissue","Renewal"]} />
-          <Field k="product_type" label="Product type" options={products} />
-          <Field k="domain_name" label="Domain name" placeholder="example.co.id" />
-          <Field k="cert_purchase_years" label="Certificate purchase years" type="number" placeholder="1 – 6" />
-          <div />
-          <Field k="cert_start_date" label="Current cert — start date" type="date" />
-          <Field k="cert_end_date" label="Current cert — end date" type="date" />
-          <Field k="order_expiry_date" label="Order expiration date (final validity)" type="date" span />
+          <TextField label="Order number" value={f.order_number} onChange={set("order_number")} error={err.order_number} placeholder="ORD-2024-0815" />
+          <DateField label="Purchase date" value={f.purchase_date} onChange={set("purchase_date")} error={err.purchase_date} />
+          <TextField label="Payment status" value={f.payment_status} onChange={set("payment_status")} options={["Paid","Unpaid"]} />
+          <TextField label="Hand over type" value={f.handover_type} onChange={set("handover_type")} options={["Reissue","Renewal"]} />
+          <TextField label="Purchased from" value={f.purchased_from} onChange={set("purchased_from")} error={err.purchased_from} options={["GoGetSSL","CertCentral"]} />
+          <TextField label="Product type" value={f.product_type} onChange={set("product_type")} error={err.product_type} options={products} />
+          <TextField label="Domain name" value={f.domain_name} onChange={set("domain_name")} error={err.domain_name} placeholder="example.co.id" />
+          <TextField label="Certificate purchase years" value={f.cert_purchase_years} onChange={set("cert_purchase_years")} error={err.cert_purchase_years} type="number" placeholder="1 – 6" />
+          <DateField label="Current cert — start date" value={f.cert_start_date} onChange={set("cert_start_date")} error={err.cert_start_date} />
+          <DateField label="Current cert — end date" value={f.cert_end_date} onChange={set("cert_end_date")} error={err.cert_end_date} />
+          <DateField label="Order expiration date (final validity)" value={f.order_expiry_date} onChange={set("order_expiry_date")} error={err.order_expiry_date} span />
         </div>
 
         {preview && (
@@ -169,11 +213,11 @@ function CaseForm({ initial, onClose, onSaved, products }) {
         )}
 
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
-          <div style={{ ...S.label, marginBottom: 12 }}>Optional — internal cost record</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--txt-low)", marginBottom: 12 }}>Optional — internal cost record</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px" }}>
-            <Field k="pusat_cost" label="Pusat-SSL cost (USD)" type="number" placeholder="0.00" />
-            <Field k="ssl_indonesia_cost" label="SSL-Indonesia cost (USD)" type="number" placeholder="0.00" />
-            <Field k="notes" label="Notes" placeholder="Customer contact, ticket ref…" span />
+            <TextField label="Pusat-SSL cost (USD)" value={f.pusat_cost} onChange={set("pusat_cost")} type="number" placeholder="0.00" />
+            <TextField label="SSL-Indonesia cost (USD)" value={f.ssl_indonesia_cost} onChange={set("ssl_indonesia_cost")} type="number" placeholder="0.00" />
+            <TextField label="Notes" value={f.notes} onChange={set("notes")} placeholder="Customer contact, ticket ref…" span />
           </div>
         </div>
 
@@ -223,6 +267,7 @@ function CaseTicket({ r, onEdit, onDelete, onStatus }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 20 }}>
             {[
               ["Purchased", fmtDate(r.purchase_date)],
+              ["Purchased from", r.purchased_from || "—"],
               ["Cert validity", `${fmtDate(r.cert_start_date)} → ${fmtDate(r.cert_end_date)}`],
               ["Order expiry", fmtDate(r.order_expiry_date)],
               ["Bought years", r.cert_purchase_years + "y"],
@@ -434,8 +479,8 @@ export default function Dashboard() {
       {showForm && <CaseForm initial={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={onSaved} products={products} />}
 
       {confirmDel && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setConfirmDel(null)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 12, padding: "24px 28px", maxWidth: 420, boxShadow: "0 20px 60px rgba(13,17,22,0.25)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 12, padding: "24px 28px", maxWidth: 420, boxShadow: "0 20px 60px rgba(13,17,22,0.25)" }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Delete this case?</div>
             <p style={{ fontSize: 13.5, color: "var(--txt-mid)", marginBottom: 18 }}>
               <span className="mono">{confirmDel.order_number}</span> · {confirmDel.domain_name} will be permanently removed.

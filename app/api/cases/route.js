@@ -33,7 +33,7 @@ export async function POST(req) {
   const sb = getServiceClient();
   const body = await req.json();
 
-  const required = ["order_number","purchase_date","payment_status","product_type","domain_name","cert_purchase_years","cert_start_date","cert_end_date","order_expiry_date","handover_type"];
+  const required = ["order_number","purchase_date","payment_status","product_type","domain_name","cert_purchase_years","cert_start_date","cert_end_date","order_expiry_date","handover_type","purchased_from"];
   for (const f of required) {
     if (!body[f] && body[f] !== 0) return NextResponse.json({ error: `Missing field: ${f}` }, { status: 400 });
   }
@@ -45,6 +45,7 @@ export async function POST(req) {
     purchase_date: body.purchase_date,
     payment_status: body.payment_status,
     product_type: body.product_type,
+    purchased_from: body.purchased_from,
     domain_name: body.domain_name.trim().toLowerCase(),
     cert_purchase_years: Number(body.cert_purchase_years),
     cert_start_date: body.cert_start_date,

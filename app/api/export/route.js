@@ -33,6 +33,7 @@ export async function GET(req) {
       "Purchase Date": r.purchase_date,
       "Payment Status": r.payment_status,
       "Product Type": r.product_type,
+      "Purchased From": r.purchased_from || "",
       "Domain Name": r.domain_name,
       "Cert Purchase Years": r.cert_purchase_years,
       "Cert Start Date": r.cert_start_date,
