@@ -8,7 +8,7 @@ const EXPORT_COLUMNS = [
   ["order", "Order number"], ["purchase_date", "Purchase date"], ["payment", "Payment status"],
   ["product", "Product type"], ["source", "Purchased from"], ["domain", "Domain name"],
   ["years", "Cert purchase years"], ["cert_start", "Cert start date"], ["cert_end", "Cert end date"],
-  ["order_expiry", "Order expiry date"], ["reissue_days", "Days to reissue"], ["days_left", "Days remaining in order"],
+  ["order_expiry", "Order expiry date"], ["reissue_days", "Days to cert expiry"], ["days_left", "Days remaining in order"],
   ["replacement", "Replacement certificate"], ["handover", "Handover type"], ["status", "Case status"],
   ["sent_on", "Sent to SSL Indonesia on"], ["completed_on", "Completed on"], ["si_order", "SSL Indonesia order #"],
   ["notes", "Notes"], ["pusat_cost", "Pusat-SSL cost"], ["si_cost", "SSL-Indonesia cost"]
@@ -282,7 +282,8 @@ function CaseForm({ initial, onClose, onSaved, products }) {
 /* ---------- Case table ---------- */
 const COLS = "26px minmax(128px,1.1fr) 88px minmax(118px,1fr) 80px 70px 78px 86px 76px 74px 140px 24px";
 
-function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue }) {
+function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue, tab }) {
+  const deadlineLabel = tab === "Reissue" ? "Reissue in" : tab === "Renewal" ? "Renew in" : "Expires in";
   const h = { fontSize: 11, fontWeight: 600, color: "var(--txt-low)", textTransform: "uppercase", letterSpacing: "0.05em" };
   return (
     <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 10, alignItems: "center", padding: "10px 14px", borderBottom: "1px solid var(--line)", background: "var(--ink-2)", borderRadius: "12px 12px 0 0" }}>
@@ -294,8 +295,8 @@ function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue }) {
       <span style={h}>Payment</span>
       <span style={h}>Handover</span>
       <span style={h}>Replacement</span>
-      <button onClick={onSortReissue} title="Sort by days to reissue" style={{ ...h, textAlign: "right", background: "transparent", padding: 0, border: "none", cursor: "pointer", color: sortDir ? "var(--cyan-deep)" : "var(--txt-low)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, fontFamily: "inherit" }}>
-        Reissue in {sortDir === "asc" ? "↑" : sortDir === "desc" ? "↓" : "↕"}
+      <button onClick={onSortReissue} title="Sort by days to certificate expiry" style={{ ...h, textAlign: "right", background: "transparent", padding: 0, border: "none", cursor: "pointer", color: sortDir ? "var(--cyan-deep)" : "var(--txt-low)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, fontFamily: "inherit" }}>
+        {deadlineLabel} {sortDir === "asc" ? "↑" : sortDir === "desc" ? "↓" : "↕"}
       </button>
       <span style={{ ...h, textAlign: "right" }}>Order left</span>
       <span style={h}>Case status</span>
@@ -349,7 +350,7 @@ function CaseRow({ r, last, selected, onToggle, onEdit, onDelete, onStatus }) {
             <ValidityBar certStart={r.cert_start_date} certEnd={r.cert_end_date} orderExpiry={r.order_expiry_date} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginTop: 22 }}>
               {[
-                ["Days to reissue", `${daysUntil(r.cert_end_date)} days — cert expires ${fmtDate(r.cert_end_date)}`],
+                [r.handover_type === "Renewal" ? "Days to renew" : "Days to reissue", `${daysUntil(r.cert_end_date)} days — cert expires ${fmtDate(r.cert_end_date)}`],
                 ["Purchased", fmtDate(r.purchase_date)],
                 ["Purchased from", r.purchased_from || "—"],
                 ["Cert validity", `${fmtDate(r.cert_start_date)} → ${fmtDate(r.cert_end_date)}`],
@@ -631,7 +632,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="card" style={{ borderRadius: 12, overflow: "hidden" }}>
-          <ListHeader allSelected={allSelected} onToggleAll={toggleAll} sortDir={reissueSort} onSortReissue={cycleReissueSort} />
+          <ListHeader allSelected={allSelected} onToggleAll={toggleAll} sortDir={reissueSort} onSortReissue={cycleReissueSort} tab={flt.handover} />
           {filtered.map((r, i) => (
             <CaseRow key={r.id} r={r} last={i === filtered.length - 1}
               selected={selectedIds.has(r.id)} onToggle={toggleSelect}
