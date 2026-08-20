@@ -60,15 +60,15 @@ function Stat({ label, value, accent, sub, onClick, active }) {
       borderRadius: 10, padding: "14px 16px", textAlign: "left",
       display: "flex", flexDirection: "column", gap: 2, minWidth: 0
     }}>
-      <span style={S.label}>{label}</span>
-      <span className="mono" style={{ fontSize: 28, fontWeight: 600, color: accent || "var(--txt-hi)", lineHeight: 1.15, fontVariantNumeric: "tabular-nums" }}>{value}</span>
+      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--txt-low)" }}>{label}</span>
+      <span style={{ fontSize: 27, fontWeight: 600, color: accent || "var(--txt-hi)", lineHeight: 1.15, fontVariantNumeric: "tabular-nums" }}>{value}</span>
       {sub && <span style={{ fontSize: 11, color: "var(--txt-low)" }}>{sub}</span>}
     </button>
   );
 }
 
 function Pill({ children, color, dim }) {
-  return <span className="mono" style={{ fontSize: 11, fontWeight: 500, color, background: dim, padding: "3px 9px", borderRadius: 4, whiteSpace: "nowrap", letterSpacing: "0.03em" }}>{children}</span>;
+  return <span style={{ fontSize: 12, fontWeight: 500, color, background: dim, padding: "3px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>{children}</span>;
 }
 
 /* ---------- Form modal ---------- */
@@ -234,56 +234,77 @@ function CaseForm({ initial, onClose, onSaved, products }) {
   );
 }
 
-/* ---------- Case ticket ---------- */
-function CaseTicket({ r, onEdit, onDelete, onStatus }) {
+/* ---------- Case table ---------- */
+const COLS = "minmax(210px,1.6fr) 110px 92px 100px 118px 92px 132px 40px";
+
+function ListHeader() {
+  const h = { fontSize: 11.5, fontWeight: 600, color: "var(--txt-low)", textTransform: "uppercase", letterSpacing: "0.06em" };
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 12, alignItems: "center", padding: "10px 18px", borderBottom: "1px solid var(--line)", background: "var(--ink-2)", borderRadius: "12px 12px 0 0" }}>
+      <span style={h}>Certificate</span>
+      <span style={h}>Source</span>
+      <span style={h}>Payment</span>
+      <span style={h}>Handover</span>
+      <span style={h}>Replacement</span>
+      <span style={{ ...h, textAlign: "right" }}>Order left</span>
+      <span style={h}>Case status</span>
+      <span />
+    </div>
+  );
+}
+
+function CaseRow({ r, last, onEdit, onDelete, onStatus }) {
   const [open, setOpen] = useState(false);
   const urgent = r.days_remaining < 90;
   return (
-    <div className="fade-up card" style={{ borderLeft: `3px solid ${tierColor(r.replacement_years)}`, borderRadius: 10, overflow: "hidden", boxShadow: "var(--shadow)" }}>
-      <div onClick={() => setOpen(o => !o)} style={{ padding: "14px 18px", cursor: "pointer", display: "grid", gridTemplateColumns: "minmax(160px,1.4fr) auto auto auto 90px", gap: 14, alignItems: "center" }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.domain_name}</div>
-          <div className="mono" style={{ fontSize: 11.5, color: "var(--txt-low)", marginTop: 1 }}>{r.order_number} · {r.product_type}</div>
+    <div style={{ borderBottom: last && !open ? "none" : "1px solid var(--line)" }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: "grid", gridTemplateColumns: COLS, gap: 12, alignItems: "center", padding: "13px 18px", cursor: "pointer", background: open ? "var(--ink-2)" : "transparent" }}>
+        <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: tierColor(r.replacement_years), flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.domain_name}</div>
+            <div style={{ fontSize: 12, color: "var(--txt-low)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.order_number} · {r.product_type}</div>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <Pill color={r.payment_status === "Paid" ? "var(--green)" : "var(--red)"} dim={r.payment_status === "Paid" ? "var(--green-dim)" : "var(--red-dim)"}>{r.payment_status}</Pill>
-          <Pill color="var(--txt-mid)" dim="var(--ink-3)">{r.handover_type}</Pill>
-          <Pill color={tierColor(r.replacement_years)} dim={tierDim(r.replacement_years)}>{r.replacement_years}Y replacement</Pill>
-        </div>
+        <span style={{ fontSize: 13, color: "var(--txt-mid)" }}>{r.purchased_from || "—"}</span>
+        <Pill color={r.payment_status === "Paid" ? "var(--green)" : "var(--red)"} dim={r.payment_status === "Paid" ? "var(--green-dim)" : "var(--red-dim)"}>{r.payment_status}</Pill>
+        <span style={{ fontSize: 13, color: "var(--txt-mid)" }}>{r.handover_type}</span>
+        <Pill color={tierColor(r.replacement_years)} dim={tierDim(r.replacement_years)}>{r.replacement_years}-year</Pill>
         <div style={{ textAlign: "right" }}>
-          <div className={"mono" + (urgent ? " pulse" : "")} style={{ fontSize: 17, fontWeight: 600, color: urgent ? "var(--red)" : "var(--txt-hi)", fontVariantNumeric: "tabular-nums" }}>{r.days_remaining}d</div>
-          <div style={{ fontSize: 10.5, color: "var(--txt-low)" }}>order left</div>
+          <span style={{ fontSize: 14.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: urgent ? "var(--red)" : "var(--txt-hi)" }}>{r.days_remaining}d</span>
         </div>
         <select value={r.status} onClick={e => e.stopPropagation()} onChange={e => onStatus(r, e.target.value)}
-          style={{ width: 130, padding: "6px 8px", fontSize: 12.5, background: r.status === "Completed" ? "var(--green-dim)" : r.status === "In Progress" ? "var(--amber-dim)" : "var(--ink-2)", color: r.status === "Completed" ? "var(--green)" : r.status === "In Progress" ? "var(--amber)" : "var(--txt-mid)", border: "1px solid var(--line)" }}>
-          {CASE_STATUS.map(s => <option key={s} value={s}>{s}</option>)}
+          style={{ padding: "6px 8px", fontSize: 12.5, borderRadius: 6, background: r.status === "Completed" ? "var(--green-dim)" : r.status === "In Progress" ? "var(--amber-dim)" : "var(--ink-1)", color: r.status === "Completed" ? "var(--green)" : r.status === "In Progress" ? "var(--amber)" : "var(--txt-mid)", border: "1px solid var(--line)" }}>
+          {CASE_STATUS.map(st => <option key={st} value={st}>{st}</option>)}
         </select>
-        <div className="mono" style={{ fontSize: 11, color: "var(--txt-low)", textAlign: "right" }}>{open ? "▲ close" : "▼ detail"}</div>
+        <span style={{ color: "var(--txt-low)", fontSize: 12, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", textAlign: "center" }}>▾</span>
       </div>
 
       {open && (
-        <div style={{ padding: "4px 18px 18px", borderTop: "1px solid var(--line)" }}>
-          <ValidityBar certStart={r.cert_start_date} certEnd={r.cert_end_date} orderExpiry={r.order_expiry_date} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 20 }}>
-            {[
-              ["Purchased", fmtDate(r.purchase_date)],
-              ["Purchased from", r.purchased_from || "—"],
-              ["Cert validity", `${fmtDate(r.cert_start_date)} → ${fmtDate(r.cert_end_date)}`],
-              ["Order expiry", fmtDate(r.order_expiry_date)],
-              ["Bought years", r.cert_purchase_years + "y"],
-              r.pusat_cost != null ? ["Pusat cost", "$" + r.pusat_cost] : null,
-              r.ssl_indonesia_cost != null ? ["SSL-Indonesia cost", "$" + r.ssl_indonesia_cost] : null,
-            ].filter(Boolean).map(([k, v]) => (
-              <div key={k}>
-                <div style={S.label}>{k}</div>
-                <div className="mono" style={{ fontSize: 13, marginTop: 2 }}>{v}</div>
-              </div>
-            ))}
-          </div>
-          {r.notes && <div style={{ marginTop: 14, fontSize: 13, color: "var(--txt-mid)", background: "var(--ink-2)", padding: "10px 14px", borderRadius: 6 }}>{r.notes}</div>}
-          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <button onClick={() => onEdit(r)} style={{ background: "var(--ink-3)", color: "var(--txt-hi)", padding: "8px 18px", fontSize: 13 }}>Edit</button>
-            <button onClick={() => onDelete(r)} style={{ background: "transparent", border: "1px solid var(--red)", color: "var(--red)", padding: "8px 18px", fontSize: 13 }}>Delete</button>
+        <div style={{ padding: "6px 18px 20px", background: "var(--ink-2)", borderBottom: last ? "none" : "1px solid var(--line)" }}>
+          <div style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 10, padding: "16px 20px" }}>
+            <ValidityBar certStart={r.cert_start_date} certEnd={r.cert_end_date} orderExpiry={r.order_expiry_date} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginTop: 22 }}>
+              {[
+                ["Purchased", fmtDate(r.purchase_date)],
+                ["Purchased from", r.purchased_from || "—"],
+                ["Cert validity", `${fmtDate(r.cert_start_date)} → ${fmtDate(r.cert_end_date)}`],
+                ["Order expiry", fmtDate(r.order_expiry_date)],
+                ["Bought years", r.cert_purchase_years + "y"],
+                r.pusat_cost != null ? ["Pusat-SSL cost", "$" + r.pusat_cost] : null,
+                r.ssl_indonesia_cost != null ? ["SSL-Indonesia cost", "$" + r.ssl_indonesia_cost] : null,
+              ].filter(Boolean).map(([k, v]) => (
+                <div key={k}>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--txt-low)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>{k}</div>
+                  <div style={{ fontSize: 13.5, fontVariantNumeric: "tabular-nums" }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {r.notes && <div style={{ marginTop: 14, fontSize: 13, color: "var(--txt-mid)", background: "var(--ink-2)", padding: "10px 14px", borderRadius: 8 }}>{r.notes}</div>}
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button onClick={() => onEdit(r)} style={{ background: "var(--ink-2)", border: "1px solid var(--line-strong)", color: "var(--txt-hi)", padding: "8px 18px", fontSize: 13 }}>Edit</button>
+              <button onClick={() => onDelete(r)} style={{ background: "transparent", border: "1px solid var(--red)", color: "var(--red)", padding: "8px 18px", fontSize: 13 }}>Delete</button>
+            </div>
           </div>
         </div>
       )}
@@ -411,13 +432,13 @@ export default function Dashboard() {
       </section>
 
       <section className="card" style={{ padding: "16px 18px", marginBottom: 18, borderRadius: 12 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-          {[["", "All time"], ["week", "Last 7 days"], ["month", "This month"], ["year", "This year"]].map(([v, l]) => (
-            <button key={v} onClick={() => applyPreset(v)} className="mono" style={{
-              padding: "6px 14px", fontSize: 11.5, letterSpacing: "0.05em",
-              background: preset === v ? "var(--cyan-dim)" : "transparent",
-              border: `1px solid ${preset === v ? "var(--cyan)" : "var(--line)"}`,
-              color: preset === v ? "var(--cyan)" : "var(--txt-mid)"
+        <div style={{ display: "inline-flex", border: "1px solid var(--line-strong)", borderRadius: 8, overflow: "hidden", marginBottom: 12 }}>
+          {[["", "All time"], ["week", "Last 7 days"], ["month", "This month"], ["year", "This year"]].map(([v, l], i) => (
+            <button key={v} onClick={() => applyPreset(v)} style={{
+              padding: "7px 16px", fontSize: 13, borderRadius: 0,
+              borderLeft: i === 0 ? "none" : "1px solid var(--line)",
+              background: preset === v ? "var(--cyan)" : "#fff",
+              color: preset === v ? "#fff" : "var(--txt-mid)", fontWeight: preset === v ? 600 : 400
             }}>{l}</button>
           ))}
         </div>
@@ -438,15 +459,15 @@ export default function Dashboard() {
             {CASE_STATUS.map(s => <option key={s}>{s}</option>)}
           </select>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, flexWrap: "wrap", gap: 10 }}>
-          <span className="mono" style={{ fontSize: 12, color: "var(--txt-low)" }}>{filtered.length} / {records.length} cases</span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--line)", flexWrap: "wrap", gap: 10 }}>
+          <span style={{ fontSize: 13, color: "var(--txt-low)" }}>Showing {filtered.length} of {records.length} cases</span>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--txt-mid)", cursor: "pointer" }}>
               <input type="checkbox" checked={includeCosts} onChange={e => setIncludeCosts(e.target.checked)} style={{ width: "auto" }} />
               Include cost columns
             </label>
-            <button onClick={exportExcel} disabled={filtered.length === 0} style={{ background: "var(--ink-3)", color: "var(--txt-hi)", padding: "9px 20px", fontSize: 13.5, border: "1px solid var(--line-strong)" }}>
-              ⬇ Export Excel
+            <button onClick={exportExcel} disabled={filtered.length === 0} style={{ background: "#fff", color: "var(--cyan-deep)", padding: "9px 20px", fontSize: 13.5, fontWeight: 600, border: "1px solid var(--cyan)" }}>
+              Export Excel
             </button>
           </div>
         </div>
@@ -459,16 +480,17 @@ export default function Dashboard() {
       )}
 
       {loading ? (
-        <div className="mono pulse" style={{ textAlign: "center", padding: "60px 0", color: "var(--txt-low)", fontSize: 13 }}>loading cases…</div>
+        <div className="pulse" style={{ textAlign: "center", padding: "60px 0", color: "var(--txt-low)", fontSize: 14 }}>Loading cases…</div>
       ) : filtered.length === 0 && !loadErr ? (
         <div style={{ textAlign: "center", padding: "70px 20px", border: "1px dashed var(--line-strong)", borderRadius: 12 }}>
-          <div className="mono" style={{ fontSize: 13, color: "var(--txt-low)", marginBottom: 8 }}>{records.length === 0 ? "no cases logged yet" : "no cases match filters"}</div>
+          <div style={{ fontSize: 14, color: "var(--txt-mid)", marginBottom: 10 }}>{records.length === 0 ? "No cases logged yet" : "No cases match the current filters"}</div>
           {records.length === 0 && <button onClick={() => setShowForm(true)} style={{ background: "var(--cyan)", color: "#fff", padding: "10px 22px", fontWeight: 600 }}>Log the first case</button>}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map(r => (
-            <CaseTicket key={r.id} r={r}
+        <div className="card" style={{ borderRadius: 12, overflow: "hidden" }}>
+          <ListHeader />
+          {filtered.map((r, i) => (
+            <CaseRow key={r.id} r={r} last={i === filtered.length - 1}
               onEdit={x => { setEditing(x); setShowForm(true); }}
               onDelete={x => setConfirmDel(x)}
               onStatus={onStatus} />
@@ -493,9 +515,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      <footer style={{ marginTop: 50, paddingTop: 18, borderTop: "1px solid var(--line)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-        <span className="mono" style={{ fontSize: 11, color: "var(--txt-low)" }}>Replacement tiers · ≤365d → 1Y · 366–730d → 2Y · &gt;730d → 3Y</span>
-        <span className="mono" style={{ fontSize: 11, color: "var(--txt-low)" }}>Renewals handled by SSL Indonesia</span>
+      <footer style={{ marginTop: 50, paddingTop: 18, borderTop: "1px solid var(--line)", textAlign: "center" }}>
+        <span style={{ fontSize: 12.5, color: "var(--txt-low)" }}>Created by Mathivanan K for internal tracking purpose</span>
       </footer>
     </main>
   );
