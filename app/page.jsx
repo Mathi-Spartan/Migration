@@ -5,7 +5,7 @@ const PRODUCTS = ["DV SSL","OV SSL","EV SSL","DV Wildcard","OV Wildcard","EV Wil
 const CASE_STATUS = ["Pending","In Progress","Completed"];
 
 const S = {
-  page: { maxWidth: 1180, margin: "0 auto", padding: "0 24px 80px" },
+  page: { maxWidth: 1180, margin: "0 auto", padding: "0 24px 80px", overflowX: "hidden" },
   label: { fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--txt-low)" },
 };
 
@@ -55,7 +55,7 @@ function ValidityBar({ certStart, certEnd, orderExpiry }) {
 function Stat({ label, value, accent, sub, onClick, active }) {
   return (
     <button onClick={onClick} style={{
-      background: active ? "var(--ink-2)" : "var(--ink-1)",
+      background: active ? "var(--cyan-dim)" : "var(--ink-1)", boxShadow: "var(--shadow)",
       border: `1px solid ${active ? accent || "var(--line-strong)" : "var(--line)"}`,
       borderRadius: 10, padding: "14px 16px", textAlign: "left",
       display: "flex", flexDirection: "column", gap: 2, minWidth: 0
@@ -78,7 +78,7 @@ const emptyForm = {
   order_expiry_date: "", handover_type: "Reissue", pusat_cost: "", ssl_indonesia_cost: "", notes: ""
 };
 
-function CaseForm({ initial, onClose, onSaved }) {
+function CaseForm({ initial, onClose, onSaved, products }) {
   const [f, setF] = useState(initial || emptyForm);
   const [err, setErr] = useState({});
   const [apiErr, setApiErr] = useState("");
@@ -135,8 +135,8 @@ function CaseForm({ initial, onClose, onSaved }) {
   );
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(5,8,18,0.8)", backdropFilter: "blur(4px)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "40px 16px" }} onClick={onClose}>
-      <div className="fade-up" onClick={e => e.stopPropagation()} style={{ background: "var(--ink-1)", border: "1px solid var(--line-strong)", borderRadius: 14, width: "100%", maxWidth: 700, padding: "26px 28px" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", backdropFilter: "blur(3px)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "40px 16px" }} onClick={onClose}>
+      <div className="fade-up" onClick={e => e.stopPropagation()} style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 14, width: "100%", maxWidth: 700, padding: "26px 28px", boxShadow: "0 20px 60px rgba(13,17,22,0.25)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
             <div style={S.label}>{editing ? "Edit case" : "New migration case"}</div>
@@ -150,7 +150,7 @@ function CaseForm({ initial, onClose, onSaved }) {
           <Field k="purchase_date" label="Purchase date" type="date" />
           <Field k="payment_status" label="Payment status" options={["Paid","Unpaid"]} />
           <Field k="handover_type" label="Hand over type" options={["Reissue","Renewal"]} />
-          <Field k="product_type" label="Product type" options={PRODUCTS} />
+          <Field k="product_type" label="Product type" options={products} />
           <Field k="domain_name" label="Domain name" placeholder="example.co.id" />
           <Field k="cert_purchase_years" label="Certificate purchase years" type="number" placeholder="1 – 6" />
           <div />
@@ -181,7 +181,7 @@ function CaseForm({ initial, onClose, onSaved }) {
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
           <button onClick={onClose} style={{ background: "transparent", border: "1px solid var(--line-strong)", color: "var(--txt-mid)", padding: "10px 20px" }}>Cancel</button>
-          <button onClick={submit} disabled={saving} style={{ background: "var(--cyan)", color: "var(--ink-0)", padding: "10px 24px", fontWeight: 600 }}>
+          <button onClick={submit} disabled={saving} style={{ background: "var(--cyan)", color: "#fff", padding: "10px 24px", fontWeight: 600 }}>
             {saving ? "Saving…" : editing ? "Save changes" : "Log case"}
           </button>
         </div>
@@ -195,7 +195,7 @@ function CaseTicket({ r, onEdit, onDelete, onStatus }) {
   const [open, setOpen] = useState(false);
   const urgent = r.days_remaining < 90;
   return (
-    <div className="fade-up" style={{ background: "var(--ink-1)", border: "1px solid var(--line)", borderLeft: `3px solid ${tierColor(r.replacement_years)}`, borderRadius: 10, overflow: "hidden" }}>
+    <div className="fade-up card" style={{ borderLeft: `3px solid ${tierColor(r.replacement_years)}`, borderRadius: 10, overflow: "hidden", boxShadow: "var(--shadow)" }}>
       <div onClick={() => setOpen(o => !o)} style={{ padding: "14px 18px", cursor: "pointer", display: "grid", gridTemplateColumns: "minmax(160px,1.4fr) auto auto auto 90px", gap: 14, alignItems: "center" }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.domain_name}</div>
@@ -249,6 +249,7 @@ function CaseTicket({ r, onEdit, onDelete, onStatus }) {
 /* ---------- Page ---------- */
 export default function Dashboard() {
   const [records, setRecords] = useState([]);
+  const [products, setProducts] = useState(PRODUCTS);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -272,6 +273,11 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    fetch("/api/products").then(r => r.json()).then(j => {
+      if (Array.isArray(j.products) && j.products.length) setProducts(j.products);
+    }).catch(() => {});
+  }, []);
 
   const applyPreset = (p) => {
     setPreset(p);
@@ -332,19 +338,21 @@ export default function Dashboard() {
 
   return (
     <main style={S.page}>
-      <header style={{ padding: "34px 0 26px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap", borderBottom: "1px solid var(--line)" }}>
-        <div>
-          <div className="mono" style={{ fontSize: 11, letterSpacing: "0.18em", color: "var(--cyan)", textTransform: "uppercase", marginBottom: 6 }}>Migration control</div>
-          <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-            Pusat SSL <span style={{ color: "var(--txt-low)", fontWeight: 400 }}>→</span> SSL Indonesia
-          </h1>
-          <p style={{ color: "var(--txt-mid)", fontSize: 13.5, marginTop: 6 }}>
-            Free replacement handover · <span style={{ color: "var(--red)" }}>Pusat SSL banned</span> · <span style={{ color: "var(--green)" }}>SSL Indonesia approved</span>
-          </p>
+      <header className="hero-band" style={{ margin: "0 -24px", padding: "34px 24px 30px", display: "flex", justifyContent: "center" }}>
+        <div style={{ width: "100%", maxWidth: 1132, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <div className="mono" style={{ fontSize: 11, letterSpacing: "0.18em", color: "var(--sky)", textTransform: "uppercase", marginBottom: 8 }}>Migration control</div>
+            <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+              Pusat SSL <span style={{ opacity: 0.55, fontWeight: 400 }}>→</span> SSL Indonesia
+            </h1>
+            <p style={{ fontSize: 13.5, marginTop: 8, opacity: 0.92 }}>
+              Free replacement handover · <span style={{ background: "rgba(255,255,255,0.16)", padding: "2px 9px", borderRadius: 100 }}>Pusat SSL banned</span> <span style={{ background: "rgba(255,255,255,0.16)", padding: "2px 9px", borderRadius: 100 }}>SSL Indonesia approved</span>
+            </p>
+          </div>
+          <button onClick={() => { setEditing(null); setShowForm(true); }} style={{ background: "#ffffff", color: "var(--cyan-deep)", padding: "12px 26px", fontWeight: 600, fontSize: 14.5, boxShadow: "0 2px 10px rgba(13,17,22,0.18)" }}>
+            + Log case
+          </button>
         </div>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} style={{ background: "var(--cyan)", color: "var(--ink-0)", padding: "12px 26px", fontWeight: 600, fontSize: 14.5 }}>
-          + Log case
-        </button>
       </header>
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(135px, 1fr))", gap: 10, margin: "22px 0" }}>
@@ -357,7 +365,7 @@ export default function Dashboard() {
         <Stat label="3-year tier" value={stats.y3} accent="var(--violet)" sub="> 730d" active={flt.years === "3"} onClick={() => setFlt(f => ({ ...f, years: f.years === "3" ? "" : "3" }))} />
       </section>
 
-      <section style={{ background: "var(--ink-1)", border: "1px solid var(--line)", borderRadius: 12, padding: "16px 18px", marginBottom: 18 }}>
+      <section className="card" style={{ padding: "16px 18px", marginBottom: 18, borderRadius: 12 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
           {[["", "All time"], ["week", "Last 7 days"], ["month", "This month"], ["year", "This year"]].map(([v, l]) => (
             <button key={v} onClick={() => applyPreset(v)} className="mono" style={{
@@ -374,7 +382,7 @@ export default function Dashboard() {
           <input type="date" value={flt.to} onChange={e => { setPreset(""); setFlt(f => ({ ...f, to: e.target.value })); }} />
           <select value={flt.product} onChange={e => setFlt(f => ({ ...f, product: e.target.value }))}>
             <option value="">All products</option>
-            {PRODUCTS.map(p => <option key={p}>{p}</option>)}
+            {products.map(p => <option key={p}>{p}</option>)}
           </select>
           <select value={flt.handover} onChange={e => setFlt(f => ({ ...f, handover: e.target.value }))}>
             <option value="">Reissue + Renewal</option>
@@ -410,7 +418,7 @@ export default function Dashboard() {
       ) : filtered.length === 0 && !loadErr ? (
         <div style={{ textAlign: "center", padding: "70px 20px", border: "1px dashed var(--line-strong)", borderRadius: 12 }}>
           <div className="mono" style={{ fontSize: 13, color: "var(--txt-low)", marginBottom: 8 }}>{records.length === 0 ? "no cases logged yet" : "no cases match filters"}</div>
-          {records.length === 0 && <button onClick={() => setShowForm(true)} style={{ background: "var(--cyan)", color: "var(--ink-0)", padding: "10px 22px", fontWeight: 600 }}>Log the first case</button>}
+          {records.length === 0 && <button onClick={() => setShowForm(true)} style={{ background: "var(--cyan)", color: "#fff", padding: "10px 22px", fontWeight: 600 }}>Log the first case</button>}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -423,11 +431,11 @@ export default function Dashboard() {
         </div>
       )}
 
-      {showForm && <CaseForm initial={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={onSaved} />}
+      {showForm && <CaseForm initial={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={onSaved} products={products} />}
 
       {confirmDel && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(5,8,18,0.8)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setConfirmDel(null)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "var(--ink-1)", border: "1px solid var(--line-strong)", borderRadius: 12, padding: "24px 28px", maxWidth: 420 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setConfirmDel(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 12, padding: "24px 28px", maxWidth: 420, boxShadow: "0 20px 60px rgba(13,17,22,0.25)" }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Delete this case?</div>
             <p style={{ fontSize: 13.5, color: "var(--txt-mid)", marginBottom: 18 }}>
               <span className="mono">{confirmDel.order_number}</span> · {confirmDel.domain_name} will be permanently removed.
