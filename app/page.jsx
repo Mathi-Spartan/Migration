@@ -4,6 +4,16 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 const PRODUCTS = ["DV SSL","OV SSL","EV SSL","DV Wildcard","OV Wildcard","EV Wildcard","Multi-Domain SAN","Code Signing","S/MIME","Other"];
 const CASE_STATUS = ["No action taken","Pending to send","Sent to SSL Indonesia","On hold","Completed","Cancelled"];
 const FILTER_STATUS = [...CASE_STATUS, "Expired"];
+const EXPORT_COLUMNS = [
+  ["order", "Order number"], ["purchase_date", "Purchase date"], ["payment", "Payment status"],
+  ["product", "Product type"], ["source", "Purchased from"], ["domain", "Domain name"],
+  ["years", "Cert purchase years"], ["cert_start", "Cert start date"], ["cert_end", "Cert end date"],
+  ["order_expiry", "Order expiry date"], ["reissue_days", "Days to reissue"], ["days_left", "Days remaining in order"],
+  ["replacement", "Replacement certificate"], ["handover", "Handover type"], ["status", "Case status"],
+  ["sent_on", "Sent to SSL Indonesia on"], ["completed_on", "Completed on"], ["si_order", "SSL Indonesia order #"],
+  ["notes", "Notes"], ["pusat_cost", "Pusat-SSL cost"], ["si_cost", "SSL-Indonesia cost"]
+];
+const DEFAULT_EXPORT_KEYS = EXPORT_COLUMNS.map(c => c[0]).filter(k => k !== "pusat_cost" && k !== "si_cost");
 function isExpired(r) {
   return r.status === "No action taken" && daysUntil(r.cert_end_date) <= 0;
 }
@@ -379,7 +389,8 @@ export default function Dashboard() {
   const [editing, setEditing] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
   const [flt, setFlt] = useState({ search: "", from: "", to: "", product: "", handover: "", years: "", status: "" });
-  const [includeCosts, setIncludeCosts] = useState(false);
+  const [exportCols, setExportCols] = useState(new Set(DEFAULT_EXPORT_KEYS));
+  const [showColPicker, setShowColPicker] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [reissueSort, setReissueSort] = useState(null);
   const [preset, setPreset] = useState("");
@@ -474,7 +485,7 @@ export default function Dashboard() {
     const res = await fetch("/api/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: [...selectedIds], costs: includeCosts })
+      body: JSON.stringify({ ids: [...selectedIds], columns: [...exportCols] })
     });
     if (!res.ok) return;
     const blob = await res.blob();
@@ -494,7 +505,7 @@ export default function Dashboard() {
     if (flt.handover) p.set("handover", flt.handover);
     if (flt.years) p.set("years", flt.years);
     if (flt.status) p.set("status", flt.status);
-    if (includeCosts) p.set("costs", "1");
+    p.set("cols", [...exportCols].join(","));
     window.location.href = "/api/export?" + p.toString();
   };
 
@@ -571,10 +582,9 @@ export default function Dashboard() {
             {selectedIds.size > 0 && <button onClick={() => setSelectedIds(new Set())} style={{ background: "transparent", color: "var(--txt-low)", fontSize: 12.5, padding: "2px 8px", textDecoration: "underline" }}>clear</button>}
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--txt-mid)", cursor: "pointer" }}>
-              <input type="checkbox" checked={includeCosts} onChange={e => setIncludeCosts(e.target.checked)} style={{ width: "auto" }} />
-              Include cost columns
-            </label>
+            <button onClick={() => setShowColPicker(true)} style={{ background: "#fff", color: "var(--txt-mid)", padding: "9px 16px", fontSize: 13.5, border: "1px solid var(--line-strong)" }}>
+              Columns ({exportCols.size}/{EXPORT_COLUMNS.length})
+            </button>
             {selectedIds.size > 0 && (
               <button onClick={exportSelected} style={{ background: "var(--cyan)", color: "#fff", padding: "9px 20px", fontSize: 13.5, fontWeight: 600 }}>
                 Export selected ({selectedIds.size})
@@ -633,6 +643,39 @@ export default function Dashboard() {
       )}
 
       {showForm && <CaseForm initial={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={onSaved} products={products} />}
+
+      {showColPicker && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", zIndex: 55, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 14, padding: "24px 28px", width: "100%", maxWidth: 560, boxShadow: "0 20px 60px rgba(13,17,22,0.25)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ fontSize: 17, fontWeight: 600 }}>Choose export columns</div>
+              <button onClick={() => setShowColPicker(false)} aria-label="Close" style={{ background: "transparent", color: "var(--txt-mid)", fontSize: 20, padding: "2px 8px" }}>×</button>
+            </div>
+            <p style={{ fontSize: 13, color: "var(--txt-mid)", marginBottom: 14 }}>Applies to both Export all shown and Export selected.</p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <button onClick={() => setExportCols(new Set(EXPORT_COLUMNS.map(c => c[0])))} style={{ fontSize: 12.5, padding: "5px 12px", background: "var(--ink-2)", border: "1px solid var(--line)" }}>Select all</button>
+              <button onClick={() => setExportCols(new Set(DEFAULT_EXPORT_KEYS))} style={{ fontSize: 12.5, padding: "5px 12px", background: "var(--ink-2)", border: "1px solid var(--line)" }}>Default</button>
+              <button onClick={() => setExportCols(new Set(["order", "domain"]))} style={{ fontSize: 12.5, padding: "5px 12px", background: "var(--ink-2)", border: "1px solid var(--line)" }}>Minimal</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "7px 18px", maxHeight: 320, overflowY: "auto" }}>
+              {EXPORT_COLUMNS.map(([k, label]) => (
+                <label key={k} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, cursor: "pointer", color: "var(--txt-hi)" }}>
+                  <input type="checkbox" checked={exportCols.has(k)}
+                    onChange={() => setExportCols(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })}
+                    style={{ width: 15, height: 15, accentColor: "#3375b1" }} />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+              <button onClick={() => setShowColPicker(false)} disabled={exportCols.size === 0}
+                style={{ background: "var(--cyan)", color: "#fff", padding: "9px 22px", fontWeight: 600 }}>
+                Done{exportCols.size === 0 ? " (pick at least one)" : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmDel && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(13,23,38,0.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
