@@ -264,7 +264,7 @@ function CaseForm({ initial, onClose, onSaved, products }) {
 /* ---------- Case table ---------- */
 const COLS = "26px minmax(128px,1.1fr) 88px minmax(118px,1fr) 80px 70px 78px 86px 76px 74px 140px 24px";
 
-function ListHeader({ allSelected, onToggleAll }) {
+function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue }) {
   const h = { fontSize: 11, fontWeight: 600, color: "var(--txt-low)", textTransform: "uppercase", letterSpacing: "0.05em" };
   return (
     <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 10, alignItems: "center", padding: "10px 14px", borderBottom: "1px solid var(--line)", background: "var(--ink-2)", borderRadius: "12px 12px 0 0" }}>
@@ -276,7 +276,9 @@ function ListHeader({ allSelected, onToggleAll }) {
       <span style={h}>Payment</span>
       <span style={h}>Handover</span>
       <span style={h}>Replacement</span>
-      <span style={{ ...h, textAlign: "right" }}>Reissue in</span>
+      <button onClick={onSortReissue} title="Sort by days to reissue" style={{ ...h, textAlign: "right", background: "transparent", padding: 0, border: "none", cursor: "pointer", color: sortDir ? "var(--cyan-deep)" : "var(--txt-low)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, fontFamily: "inherit" }}>
+        Reissue in {sortDir === "asc" ? "↑" : sortDir === "desc" ? "↓" : "↕"}
+      </button>
       <span style={{ ...h, textAlign: "right" }}>Order left</span>
       <span style={h}>Case status</span>
       <span />
@@ -370,6 +372,7 @@ export default function Dashboard() {
   const [flt, setFlt] = useState({ search: "", from: "", to: "", product: "", handover: "", years: "", status: "" });
   const [includeCosts, setIncludeCosts] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [reissueSort, setReissueSort] = useState(null);
   const [preset, setPreset] = useState("");
 
   const load = useCallback(async () => {
@@ -415,6 +418,8 @@ export default function Dashboard() {
     return true;
   }), [records, flt.product, flt.years, flt.status, flt.from, flt.to, flt.search]);
 
+  const cycleReissueSort = () => setReissueSort(d => d === null ? "asc" : d === "asc" ? "desc" : null);
+
   const filtered = useMemo(() => records.filter(r => {
     if (flt.product && r.product_type !== flt.product) return false;
     if (flt.handover && r.handover_type !== flt.handover) return false;
@@ -427,7 +432,11 @@ export default function Dashboard() {
       if (!r.order_number.toLowerCase().includes(q) && !r.domain_name.toLowerCase().includes(q)) return false;
     }
     return true;
-  }), [records, flt]);
+  }).sort((a, b) => {
+    if (!reissueSort) return 0;
+    const da = daysUntil(a.cert_end_date), db = daysUntil(b.cert_end_date);
+    return reissueSort === "asc" ? da - db : db - da;
+  }), [records, flt, reissueSort]);
 
   const stats = useMemo(() => ({
     total: records.length,
@@ -601,7 +610,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="card" style={{ borderRadius: 12, overflow: "hidden" }}>
-          <ListHeader allSelected={allSelected} onToggleAll={toggleAll} />
+          <ListHeader allSelected={allSelected} onToggleAll={toggleAll} sortDir={reissueSort} onSortReissue={cycleReissueSort} />
           {filtered.map((r, i) => (
             <CaseRow key={r.id} r={r} last={i === filtered.length - 1}
               selected={selectedIds.has(r.id)} onToggle={toggleSelect}
