@@ -280,10 +280,11 @@ function CaseForm({ initial, onClose, onSaved, products }) {
 }
 
 /* ---------- Case table ---------- */
-const COLS = "26px minmax(128px,1.1fr) 88px minmax(118px,1fr) 80px 70px 78px 86px 76px 74px 140px 24px";
+const COLS = "26px minmax(124px,1.1fr) 86px minmax(114px,1fr) 78px 68px 76px 84px 74px 92px 136px 24px";
 
 function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue, tab }) {
   const deadlineLabel = tab === "Reissue" ? "Reissue in" : tab === "Renewal" ? "Renew in" : "Expires in";
+  const runwayLabel = tab === "Reissue" ? "Days to end the subscription" : "Order left";
   const h = { fontSize: 11, fontWeight: 600, color: "var(--txt-low)", textTransform: "uppercase", letterSpacing: "0.05em" };
   return (
     <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 10, alignItems: "center", padding: "10px 14px", borderBottom: "1px solid var(--line)", background: "var(--ink-2)", borderRadius: "12px 12px 0 0" }}>
@@ -298,7 +299,7 @@ function ListHeader({ allSelected, onToggleAll, sortDir, onSortReissue, tab }) {
       <button onClick={onSortReissue} title="Sort by days to certificate expiry" style={{ ...h, textAlign: "right", background: "transparent", padding: 0, border: "none", cursor: "pointer", color: sortDir ? "var(--cyan-deep)" : "var(--txt-low)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, fontFamily: "inherit" }}>
         {deadlineLabel} {sortDir === "asc" ? "↑" : sortDir === "desc" ? "↓" : "↕"}
       </button>
-      <span style={{ ...h, textAlign: "right" }}>Order left</span>
+      <span style={{ ...h, textAlign: "right", lineHeight: 1.25 }}>{runwayLabel}</span>
       <span style={h}>Case status</span>
       <span />
     </div>
